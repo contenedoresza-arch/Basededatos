@@ -1,0 +1,1648 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Contenedores EA SAS · Control de Inventario</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0c141d; --bg2:#0f1a26; --surf:#15212e; --surf2:#1b2a3a; --line:#26384a;
+  --ink:#eaf1f8; --mut:#8da3b8; --mut2:#5f7488;
+  --acc:#ff6a1a; --acc-d:#e2540a; --acc-soft:rgba(255,106,26,.12);
+  --ok:#27c08a; --ok-soft:rgba(39,192,138,.14);
+  --warn:#f5b53d; --warn-soft:rgba(245,181,61,.14);
+  --sea:#3aa0e3; --sea-soft:rgba(58,160,227,.14);
+  --r:14px; --sh:0 10px 30px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--ink);
+  background-image:radial-gradient(1200px 600px at 80% -10%,rgba(255,106,26,.08),transparent 60%),
+                   radial-gradient(900px 500px at -10% 110%,rgba(58,160,227,.07),transparent 55%);
+  background-attachment:fixed;min-height:100vh;-webkit-font-smoothing:antialiased;
+}
+.mono{font-family:'IBM Plex Mono',monospace}
+.app{max-width:780px;margin:0 auto;padding:0 0 96px}
+
+/* HEADER */
+.top{position:sticky;top:0;z-index:30;background:linear-gradient(180deg,rgba(12,20,29,.96),rgba(12,20,29,.86));
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding:14px 18px 12px}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:108px;height:40px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;
+  background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.35);overflow:hidden;padding:4px 8px}
+.logo img{width:100%;height:100%;object-fit:contain}
+.logo .fb{font-family:'Oswald';font-weight:700;color:var(--acc);font-size:18px;letter-spacing:1px}
+.brand h1{font-family:'Oswald';font-weight:600;font-size:17px;letter-spacing:.5px;margin:0;line-height:1.05}
+.brand p{margin:2px 0 0;font-size:10.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--mut2)}
+.screen-title{display:flex;align-items:center;justify-content:space-between;margin-top:14px}
+.screen-title h2{font-family:'Oswald';font-weight:500;font-size:22px;margin:0;letter-spacing:.3px}
+.screen-title .sub{font-size:12px;color:var(--mut)}
+
+/* SCREENS */
+.screen{display:none;padding:18px}
+.screen.on{display:block;animation:fade .35s ease}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* KPI */
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.kpi{background:var(--surf);border:1px solid var(--line);border-radius:var(--r);padding:14px 15px;position:relative;overflow:hidden}
+.kpi:after{content:"";position:absolute;right:-18px;top:-18px;width:60px;height:60px;border-radius:50%;background:var(--acc-soft)}
+.kpi .lbl{font-size:10.5px;letter-spacing:1.3px;text-transform:uppercase;color:var(--mut);display:flex;align-items:center;gap:6px}
+.kpi .num{font-family:'Oswald';font-weight:600;font-size:34px;line-height:1;margin-top:8px}
+.kpi.k-ok .num{color:var(--ok)} .kpi.k-ok:after{background:var(--ok-soft)}
+.kpi.k-warn .num{color:var(--warn)} .kpi.k-warn:after{background:var(--warn-soft)}
+.kpi.k-sea .num{color:var(--sea)} .kpi.k-sea:after{background:var(--sea-soft)}
+.kpi .foot{font-size:11px;color:var(--mut2);margin-top:4px}
+
+.sec-h{font-family:'Oswald';font-weight:500;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--mut);margin:24px 2px 10px;display:flex;align-items:center;gap:8px}
+.sec-h:before{content:"";width:18px;height:2px;background:var(--acc);border-radius:2px}
+
+/* TYPE BARS */
+.tbars{background:var(--surf);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
+.tbar{display:flex;align-items:center;gap:10px;margin:9px 0}
+.tbar .tn{width:78px;font-size:12px;color:var(--mut);flex:none}
+.tbar .tt{flex:1;height:8px;background:var(--bg2);border-radius:6px;overflow:hidden}
+.tbar .tt i{display:block;height:100%;background:linear-gradient(90deg,var(--sea),var(--acc));border-radius:6px}
+.tbar .tv{font-family:'IBM Plex Mono';font-size:12px;color:var(--ink);width:18px;text-align:right}
+
+/* CARD LIST (contenedores) */
+.clist{display:flex;flex-direction:column;gap:10px}
+.ccard{background:var(--surf);border:1px solid var(--line);border-radius:var(--r);padding:13px 14px;display:flex;
+  align-items:center;gap:13px;cursor:pointer;transition:.15s;position:relative;overflow:hidden}
+.ccard:active{transform:scale(.99)}
+.ccard .stripe{position:absolute;left:0;top:0;bottom:0;width:4px}
+.ccard .ico{width:44px;height:44px;border-radius:11px;flex:none;display:grid;place-items:center;background:var(--surf2);font-size:20px}
+.ccard .mid{flex:1;min-width:0}
+.ccard .cn{font-family:'IBM Plex Mono';font-weight:600;font-size:15px;letter-spacing:.4px}
+.ccard .meta{font-size:11.5px;color:var(--mut);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap}
+.ccard .meta b{color:var(--mut2);font-weight:500}
+.ccard .arrow{color:var(--mut2);font-size:18px;flex:none}
+.pill{font-size:10px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;padding:3px 9px;border-radius:20px;white-space:nowrap}
+.p-ok{background:var(--ok-soft);color:var(--ok)} .p-warn{background:var(--warn-soft);color:var(--warn)} .p-sea{background:var(--sea-soft);color:var(--sea)}
+.s-ok{background:var(--ok)} .s-warn{background:var(--warn)} .s-sea{background:var(--sea)}
+.daypill{font-family:'IBM Plex Mono';font-size:11px;padding:2px 7px;border-radius:6px;background:var(--bg2);color:var(--mut)}
+.daypill.alert{background:rgba(245,77,77,.16);color:#ff7a7a}
+
+.empty{text-align:center;color:var(--mut2);padding:40px 20px;font-size:13px}
+.empty .big{font-size:42px;opacity:.5;margin-bottom:8px}
+
+/* FORM */
+.form{background:var(--surf);border:1px solid var(--line);border-radius:var(--r);padding:16px 16px 6px;box-shadow:var(--sh)}
+.fld{margin-bottom:15px}
+.fld label{display:block;font-size:12px;letter-spacing:.4px;color:var(--mut);margin-bottom:7px;font-weight:500}
+.fld label .req{color:var(--acc)}
+.fld input,.fld select,.fld textarea{width:100%;background:var(--bg2);border:1px solid var(--line);color:var(--ink);
+  border-radius:10px;padding:12px 13px;font-size:15px;font-family:inherit;outline:none;transition:.15s}
+.fld input:focus,.fld select:focus,.fld textarea:focus{border-color:var(--acc);background:#0d1722}
+.fld textarea{resize:vertical;min-height:64px}
+.fld .hint{font-size:11px;color:var(--mut2);margin-top:5px}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238da3b8'><path d='M2 4l4 4 4-4'/></svg>");
+  background-repeat:no-repeat;background-position:right 13px center}
+
+/* PHOTOS */
+.photos{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.ptile{aspect-ratio:1;border-radius:11px;overflow:hidden;position:relative;background:var(--bg2);border:1px solid var(--line)}
+.ptile img{width:100%;height:100%;object-fit:cover;display:block}
+.ptile .del{position:absolute;top:5px;right:5px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.6);
+  color:#fff;border:none;font-size:14px;display:grid;place-items:center;cursor:pointer}
+.padd{aspect-ratio:1;border:1.5px dashed var(--line);border-radius:11px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:5px;color:var(--mut);cursor:pointer;background:rgba(255,106,26,.04);transition:.15s}
+.padd:active{transform:scale(.97);border-color:var(--acc)}
+.padd .pi{font-size:24px} .padd .pt{font-size:10.5px;letter-spacing:.5px}
+.padd input{display:none}
+
+/* BUTTONS */
+.btn{width:100%;border:none;border-radius:12px;padding:15px;font-family:'Oswald';font-weight:600;font-size:16px;
+  letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center;gap:9px}
+.btn:active{transform:scale(.985)}
+.btn-acc{background:linear-gradient(145deg,var(--acc),var(--acc-d));color:#fff;box-shadow:0 8px 22px rgba(255,106,26,.32)}
+.btn-gh{background:var(--surf2);color:var(--ink);border:1px solid var(--line);font-size:13px;padding:12px;letter-spacing:.6px}
+.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+.btn-mini{background:var(--surf2);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:10px 8px;
+  font-size:12px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;letter-spacing:.3px}
+.btn-mini .mi{font-size:18px}
+.btn-mini:active{transform:scale(.97);border-color:var(--acc)}
+
+/* PICKER (select container) */
+.picker{position:relative;margin-bottom:15px}
+.searchbox{display:flex;align-items:center;gap:9px;background:var(--bg2);border:1px solid var(--line);border-radius:11px;padding:11px 13px}
+.searchbox input{flex:1;background:none;border:none;color:var(--ink);font-size:15px;outline:none;font-family:inherit}
+.searchbox .si{color:var(--mut2);font-size:16px}
+
+/* DETAIL */
+.dhead{background:var(--surf);border:1px solid var(--line);border-radius:var(--r);padding:16px;box-shadow:var(--sh)}
+.dhead .row1{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.dhead .cn{font-family:'IBM Plex Mono';font-weight:600;font-size:21px;letter-spacing:.5px}
+.dhead .dt{font-size:13px;color:var(--mut);margin-top:4px}
+.dgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.dcell{background:var(--bg2);border-radius:10px;padding:10px 12px}
+.dcell .l{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--mut2)}
+.dcell .v{font-size:14px;margin-top:3px;font-weight:500}
+
+.timeline{position:relative;margin:6px 0 0 6px;padding-left:22px}
+.timeline:before{content:"";position:absolute;left:5px;top:8px;bottom:10px;width:2px;background:var(--line)}
+.tev{position:relative;margin-bottom:16px}
+.tev:before{content:"";position:absolute;left:-22px;top:4px;width:12px;height:12px;border-radius:50%;background:var(--surf);border:2px solid var(--acc)}
+.tev.ok:before{border-color:var(--ok)} .tev.warn:before{border-color:var(--warn)} .tev.sea:before{border-color:var(--sea)}
+.tev .th{font-family:'Oswald';font-weight:500;font-size:14px;letter-spacing:.5px}
+.tev .ts{font-size:11.5px;color:var(--mut);margin:2px 0 7px}
+.tev .tbox{background:var(--surf);border:1px solid var(--line);border-radius:11px;padding:11px 12px;font-size:13px;color:var(--mut)}
+.tev .tbox b{color:var(--ink);font-weight:500}
+.tev .tphotos{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+.tev .tphotos .tp{width:62px;height:62px;border-radius:9px;overflow:hidden;border:1px solid var(--line);background:var(--bg2);cursor:pointer}
+.tev .tphotos .tp img{width:100%;height:100%;object-fit:cover}
+.urlchip{display:inline-flex;align-items:center;gap:5px;font-size:11px;background:var(--sea-soft);color:var(--sea);
+  padding:5px 9px;border-radius:8px;text-decoration:none;margin:3px 4px 0 0}
+
+/* ACTAS pick */
+.acta-opts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-top:8px}
+
+/* TOAST */
+.toast{position:fixed;left:50%;bottom:108px;transform:translateX(-50%) translateY(20px);background:#fff;color:#10202e;
+  padding:13px 20px;border-radius:30px;font-weight:600;font-size:13.5px;box-shadow:0 12px 30px rgba(0,0,0,.4);z-index:100;
+  opacity:0;pointer-events:none;transition:.3s;max-width:90%;display:flex;align-items:center;gap:8px}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.err{background:#ff5a5a;color:#fff}
+
+/* MODAL viewer */
+.viewer{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal-box{background:var(--surf);border:1px solid var(--line);border-radius:16px;padding:20px 18px;width:100%;max-width:420px;max-height:88vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.35)}
+.viewer.on{display:flex}
+.viewer img{max-width:100%;max-height:84vh;border-radius:10px}
+.viewer .x{position:absolute;top:20px;right:20px;width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.15);
+  color:#fff;border:none;font-size:22px;cursor:pointer}
+.viewer .dl{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);background:var(--acc);color:#fff;border:none;
+  padding:11px 22px;border-radius:24px;font-weight:600;font-size:13px;cursor:pointer}
+
+/* NAV */
+.nav{position:fixed;bottom:0;left:0;right:0;z-index:40;background:rgba(15,26,38,.95);backdrop-filter:blur(14px);
+  border-top:1px solid var(--line);display:flex;max-width:780px;margin:0 auto;padding:8px 6px calc(8px + env(safe-area-inset-bottom))}
+.nav button{flex:1;background:none;border:none;color:var(--mut2);display:flex;flex-direction:column;align-items:center;gap:3px;
+  cursor:pointer;padding:6px 2px;font-family:inherit;transition:.15s;position:relative}
+.nav button .ni{font-size:21px;line-height:1}
+.nav button .nl{font-size:9.5px;letter-spacing:.4px;font-weight:600}
+.nav button.on{color:var(--acc)}
+.nav button.fab .ni{width:46px;height:46px;border-radius:14px;background:linear-gradient(145deg,var(--acc),var(--acc-d));
+  color:#fff;display:grid;place-items:center;font-size:26px;margin-top:-22px;box-shadow:0 8px 18px rgba(255,106,26,.4);font-weight:300}
+.nav button.fab.on{color:var(--mut2)}
+
+/* MORE menu */
+.more-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.more-card{background:var(--surf);border:1px solid var(--line);border-radius:var(--r);padding:16px;cursor:pointer;text-align:left;
+  color:var(--ink);font-family:inherit;transition:.15s}
+.more-card:active{transform:scale(.98);border-color:var(--acc)}
+.more-card .mci{font-size:24px;margin-bottom:9px;display:block}
+.more-card .mct{font-family:'Oswald';font-weight:500;font-size:15px;letter-spacing:.4px}
+.more-card .mcd{font-size:11.5px;color:var(--mut);margin-top:4px;line-height:1.4}
+
+/* ===== ACTA (print) ===== */
+#actaWrap{display:none}
+@media screen{#actaWrap{display:none !important}}
+.acta{font-family:'IBM Plex Sans';color:#11202c;background:#fff;width:100%}
+.acta .a-top{display:flex;align-items:center;gap:14px;border-bottom:3px solid #11202c;padding-bottom:12px}
+.acta .a-logo{width:150px;height:52px;border-radius:6px;background:#f5f7f9;display:flex;align-items:center;justify-content:center;border:1px solid #dde5eb;overflow:hidden;padding:5px 10px;flex:none}
+.acta .a-logo img{width:100%;height:100%;object-fit:contain}
+.acta .a-logo .fb{font-family:'Oswald';font-weight:700;color:#ff6a1a;font-size:22px}
+.acta .a-co{flex:1}
+.acta .a-co h1{font-family:'Oswald';font-size:21px;margin:0;letter-spacing:.5px}
+.acta .a-co p{margin:2px 0 0;font-size:11px;color:#5a6b78;letter-spacing:1px}
+.acta .a-folio{text-align:right;font-size:11px;color:#5a6b78}
+.acta .a-folio b{display:block;font-family:'IBM Plex Mono';font-size:15px;color:#11202c}
+.acta .a-title{background:#11202c;color:#fff;text-align:center;font-family:'Oswald';font-weight:500;font-size:18px;
+  letter-spacing:3px;padding:9px;margin:16px 0;border-radius:5px}
+.acta .a-rows{width:100%;border-collapse:collapse;margin-bottom:14px}
+.acta .a-rows td{border:1px solid #cdd8e1;padding:8px 11px;font-size:12.5px;vertical-align:top}
+.acta .a-rows .k{background:#f1f5f8;font-weight:600;width:30%;color:#3a4a57}
+.acta .a-sec{font-family:'Oswald';font-size:12px;letter-spacing:2px;color:#11202c;border-bottom:1.5px solid #11202c;
+  padding-bottom:5px;margin:16px 0 9px}
+.acta .a-obs{border:1px solid #cdd8e1;border-radius:5px;padding:11px;min-height:54px;font-size:12.5px}
+.acta .a-photos{display:flex;gap:9px;flex-wrap:wrap;margin-top:8px}
+.acta .a-photos img{width:31%;border-radius:6px;border:1px solid #cdd8e1;object-fit:cover;max-height:150px}
+.acta .a-photos .u{font-size:11px;color:#3aa0e3;word-break:break-all}
+.acta .a-sign{display:flex;gap:30px;margin-top:30px}
+.acta .a-sign .col{flex:1}
+.acta .a-sign .ln{border-bottom:1px solid #11202c;height:34px;margin-bottom:4px}
+.acta .a-sign .lbl{font-size:11px;color:#5a6b78}
+.acta .a-sign .role{font-family:'Oswald';font-size:12px;letter-spacing:1.5px;margin-bottom:14px}
+.acta .a-foot{margin-top:26px;text-align:center;font-size:9.5px;color:#8a97a3;border-top:1px solid #dde5eb;padding-top:8px;letter-spacing:.5px}
+
+@media print{
+  @page{margin:14mm}
+  body{background:#fff !important}
+  body.printing .app,body.printing .nav,body.printing .toast,body.printing .viewer{display:none !important}
+  body.printing #actaWrap{display:block !important}
+  .acta .a-photos img{max-height:130px}
+}
+
+/* ===== LOGIN WALL ===== */
+#loginWall{position:fixed;inset:0;z-index:500;background:var(--bg);
+  background-image:radial-gradient(900px 500px at 60% 0%,rgba(255,106,26,.12),transparent 60%),
+                   radial-gradient(700px 600px at -5% 100%,rgba(58,160,227,.1),transparent 55%);
+  display:none;flex-direction:column;align-items:center;justify-content:center;padding:28px 20px;overflow:auto}
+.lw-logo{text-align:center;margin-bottom:22px}
+.lw-logo .lbox{background:#fff;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;
+  padding:10px 22px;height:60px;min-width:140px;box-shadow:0 8px 28px rgba(0,0,0,.4),0 0 0 1px rgba(255,255,255,.08)}
+.lw-logo .lbox img{height:100%;max-width:180px;object-fit:contain}
+.lw-logo h2{font-family:'Oswald';font-weight:500;font-size:15px;letter-spacing:2.5px;color:var(--mut);margin:14px 0 2px;text-transform:uppercase}
+.lw-logo p{font-family:'Oswald';font-weight:600;font-size:20px;margin:0;letter-spacing:.5px}
+.lw-card{background:var(--surf);border:1px solid var(--line);border-radius:18px;padding:24px 22px;width:100%;max-width:400px;box-shadow:var(--sh)}
+.lw-card h3{font-family:'Oswald';font-weight:500;font-size:17px;letter-spacing:.5px;margin:0 0 18px;color:var(--ink)}
+.lw-card .hint{font-size:12px;color:var(--mut2);text-align:center;margin-top:12px;line-height:1.5}
+.lw-card .sent{font-family:'IBM Plex Mono';font-size:12px;color:var(--sea);background:var(--sea-soft);padding:6px 12px;border-radius:8px;margin-bottom:16px;display:block;word-break:break-all}
+.lw-code{font-family:'IBM Plex Mono' !important;font-size:28px !important;letter-spacing:10px !important;text-align:center !important}
+.lw-back{background:none;border:none;color:var(--mut);font-size:13px;cursor:pointer;display:flex;align-items:center;gap:5px;padding:0;font-family:inherit;margin-top:14px}
+.lw-back:hover{color:var(--ink)}
+.lw-config{margin-top:18px;border-top:1px solid var(--line);padding-top:15px}
+.lw-config summary{font-size:12.5px;color:var(--mut2);cursor:pointer;user-select:none;list-style:none;display:flex;align-items:center;gap:6px}
+.lw-config summary::before{content:"⚙";font-size:14px}
+.lw-config .ci{margin-top:12px;display:flex;flex-direction:column;gap:9px}
+.lw-config input{width:100%;background:var(--bg2);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:11px 12px;font-size:12px;font-family:inherit;outline:none}
+.lw-config input:focus{border-color:var(--acc)}
+.lw-foot{margin-top:22px;text-align:center;font-size:11px;color:var(--mut2);line-height:1.6}
+.lw-foot a{color:var(--sea);text-decoration:none}
+.u-bar{display:flex;align-items:center;gap:10px;margin-top:6px;padding:8px 12px;background:rgba(255,255,255,.05);border-radius:10px;border:1px solid var(--line)}
+.u-bar .u-av{width:30px;height:30px;border-radius:50%;background:var(--acc-soft);border:1px solid var(--acc);display:grid;place-items:center;font-size:14px;flex:none}
+.u-bar .u-info{flex:1;min-width:0}
+.u-bar .u-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.u-bar .u-role{font-size:10.5px;color:var(--mut);letter-spacing:.3px}
+.u-bar .u-out{background:none;border:1px solid var(--line);color:var(--mut);border-radius:8px;padding:5px 10px;font-size:11.5px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.u-bar .u-out:hover{border-color:var(--acc);color:var(--acc)}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="logo">
+        <img src="https://contenedoreseasas.com/wp-content/uploads/2023/08/cropped-cropped-logo-contenedores-ea-175x58.png"
+             alt="Contenedores EA SAS"
+             onerror="this.outerHTML='<span class=fb>EA SAS</span>'">
+      </div>
+      <div>
+        <h1>CONTROL DE CONTENEDORES</h1>
+        <p>CONTENEDORES EA SAS · Cartagena de Indias</p>
+      </div>
+    </div>
+    <div class="screen-title">
+      <h2 id="scTitle">Tablero</h2>
+      <div class="sub" id="scSub"></div>
+    </div>
+    <div id="userBadge"></div>
+  </header>
+
+  <!-- DASHBOARD -->
+  <section class="screen on" id="sc-home"></section>
+
+  <!-- INGRESO -->
+  <section class="screen" id="sc-ingreso"></section>
+
+  <!-- MANTENIMIENTO -->
+  <section class="screen" id="sc-mant"></section>
+
+  <!-- SALIDA -->
+  <section class="screen" id="sc-salida"></section>
+
+  <!-- PATIO / LISTA -->
+  <section class="screen" id="sc-patio"></section>
+
+  <!-- DETALLE -->
+  <section class="screen" id="sc-detalle"></section>
+
+  <!-- MOVIMIENTO -->
+  <section class="screen" id="sc-mov"></section>
+
+  <!-- MAS -->
+  <section class="screen" id="sc-more"></section>
+</div>
+
+<nav class="nav">
+  <button data-go="home" class="on"><span class="ni">▦</span><span class="nl">Tablero</span></button>
+  <button data-go="patio"><span class="ni">▤</span><span class="nl">Patio</span></button>
+  <button id="navIngreso" data-go="ingreso" class="fab"><span class="ni">+</span><span class="nl">Ingreso</span></button>
+  <button id="navSalida" data-go="salida"><span class="ni">⇥</span><span class="nl">Salida</span></button>
+  <button data-go="more"><span class="ni">⋯</span><span class="nl">Más</span></button>
+</nav>
+
+<div class="toast" id="toast"></div>
+<div class="viewer" id="viewer">
+  <button class="x" onclick="closeViewer()">✕</button>
+  <img id="viewerImg" src="">
+  <button class="dl" id="viewerDl">⬇ Descargar foto</button>
+</div>
+<div id="actaWrap"></div>
+
+<!-- ===== PANTALLA DE ACCESO ===== -->
+<div id="loginWall">
+  <div class="lw-logo">
+    <div class="lbox">
+      <img src="https://contenedoreseasas.com/wp-content/uploads/2023/08/cropped-cropped-logo-contenedores-ea-175x58.png"
+           alt="Contenedores EA SAS" onerror="this.outerHTML='<b style=color:#ff6a1a;font-family:Oswald;font-size:20px>EA SAS</b>'">
+    </div>
+    <h2>Sistema de inventario</h2>
+    <p>Control de Contenedores</p>
+  </div>
+
+  <div class="lw-card">
+    <!-- Paso 1: correo -->
+    <div id="lw-step1">
+      <h3>🔐 Ingrese con su correo</h3>
+      <div class="fld">
+        <label>Correo electrónico <span class="req">*</span></label>
+        <input id="lw_email" type="email" placeholder="su.correo@empresa.com"
+               onkeydown="if(event.key==='Enter')requestOTP()">
+      </div>
+      <button id="lw_btn1" class="btn btn-acc" onclick="requestOTP()">Enviar código →</button>
+      <div class="hint">Le enviaremos un código de 6 dígitos a su correo.<br>No necesita contraseña.</div>
+    </div>
+
+    <!-- Paso 2: código OTP -->
+    <div id="lw-step2" style="display:none">
+      <h3>📨 Revise su correo</h3>
+      <span class="sent" id="lw_sent"></span>
+      <div class="fld">
+        <label>Código de 6 dígitos</label>
+        <input id="lw_code" type="tel" maxlength="6" placeholder="000000"
+               class="lw-code" onkeydown="if(event.key==='Enter')verifyOTP()">
+      </div>
+      <button id="lw_btn2" class="btn btn-acc" onclick="verifyOTP()">✓ Verificar e ingresar</button>
+      <button class="lw-back" onclick="el('lw-step1').style.display='block';el('lw-step2').style.display='none'">
+        ← Cambiar correo
+      </button>
+    </div>
+
+    <!-- Config primera vez -->
+    <details class="lw-config">
+      <summary>Primera vez aquí · Configurar URL del servicio</summary>
+      <div class="ci">
+        <input id="lw_cloudUrl" placeholder="https://script.google.com/macros/s/.../exec"
+               onkeydown="if(event.key==='Enter')saveCloudUrlFromLogin()">
+        <button class="btn btn-gh" onclick="saveCloudUrlFromLogin()">Guardar y conectar</button>
+      </div>
+    </details>
+  </div>
+
+  <div class="lw-foot">
+    Desarrollado por <b>P&amp;C Consultoría Integral SAS</b><br>
+    <a href="https://wa.me/573228999183">📲 322 899 9183</a> &nbsp;·&nbsp;
+    <a href="mailto:info@pycconsultoria.com">info@pycconsultoria.com</a>
+  </div>
+</div>
+
+<script>
+/* ===================== CONFIG ===================== */
+const EMPRESA="CONTENEDORES EA SAS";
+const CIUDAD="Cartagena de Indias";
+const TIPOS=["20' Dry","40' Dry","40' HC","20' Reefer","40' Reefer","Otros"];
+const UBIS=["Patio A-01","Patio A-02","Patio A-03","Patio B-01","Patio B-02","Patio B-03","Taller","Zona de despacho","Muelle"];
+const MTIPOS=["Inspección","Reparación estructural","Pintura","Limpieza","Refrigeración (Reefer)","Sistema eléctrico","Pisos","Otro"];
+const ESTADOS=["Disponible","En mantenimiento","Despachado"];
+const ICONO=(t)=> t&&t.includes("Reefer")?"❄️": t&&t.includes("HC")?"📦":"🚛";
+
+/* ===================== STORAGE ===================== */
+/* IMPORTANTE: window.storage NO existe en GitHub Pages ni en ningún hosting real —
+   es una API exclusiva de la vista previa de artefactos de Claude. Por eso, fuera de
+   ese entorno, usamos localStorage del navegador como almacenamiento persistente real.
+   Prioridad: window.storage (si existe) → localStorage → memoria (último recurso). */
+const store={
+  mem:{},
+  async get(k){
+    if(window.storage){ try{ const r=await window.storage.get(k,false); if(r) return r.value; }catch(e){} }
+    try{ const v=localStorage.getItem(k); if(v!==null) return v; }catch(e){}
+    return this.mem[k] ?? null;
+  },
+  async set(k,v){
+    this.mem[k]=v;
+    if(window.storage){ try{ await window.storage.set(k,v,false); return; }catch(e){} }
+    try{ localStorage.setItem(k,v); }catch(e){ console.warn('No se pudo guardar localmente (localStorage):',e); }
+  },
+  async del(k){
+    delete this.mem[k];
+    if(window.storage){ try{ await window.storage.delete(k,false); return; }catch(e){} }
+    try{ localStorage.removeItem(k); }catch(e){}
+  }
+};
+async function getJSON(k,def){ const v=await store.get(k); if(v==null) return def; try{return JSON.parse(v);}catch(e){return def;} }
+async function setJSON(k,o){ await store.set(k,JSON.stringify(o)); }
+
+/* ===================== STATE ===================== */
+let INDEX=[];           // [{id,numero,tipo,estado,ubicacion,fechaIngreso,fechaSalida}]
+let CURRENT=null;       // detalle id
+const cache={};         // id -> full record (loaded)
+let CLOUD_URL="";       // URL del Web App de Google Apps Script
+let SESSION=null;       // {token, email, nombre, rol} del usuario activo
+let SYNC_INTERVAL=null; // id del setInterval de sincronización automática
+let LAST_REFRESH=null;  // Date del último jalón exitoso de la nube
+let SAVING=false;       // guard para evitar doble-click en botones de guardar
+let CLIENTES_LISTA=[];  // lista manejada de clientes registrados en el patio
+
+/* ===================== PERMISOS POR ROL ===================== */
+const ROLE_PERMS={
+  'Administrador':{ingreso:true, mantenimiento:true, movimiento:true, salida:true, eliminar:true, exportar:true, importar:true, gestionUsuarios:true, configurarDrive:true},
+  'Operativo':     {ingreso:true, mantenimiento:false,movimiento:true, salida:true, eliminar:false,exportar:true, importar:false,gestionUsuarios:false,configurarDrive:false},
+  'Mantenimiento': {ingreso:false,mantenimiento:true, movimiento:false,salida:false,eliminar:false,exportar:false,importar:false,gestionUsuarios:false,configurarDrive:false},
+  'Consulta':      {ingreso:false,mantenimiento:false,movimiento:false,salida:false,eliminar:false,exportar:true, importar:false,gestionUsuarios:false,configurarDrive:false}
+};
+function can(perm){
+  if(!CLOUD_URL) return true;          // modo local: un solo usuario, sin restricciones
+  if(!SESSION) return false;
+  const p=ROLE_PERMS[SESSION.rol];
+  if(!p) return false;                  // rol desconocido/mal escrito → sin permisos, por seguridad
+  if(!perm) return p.ingreso||p.mantenimiento||p.movimiento||p.salida; // ¿puede escribir algo en general?
+  return !!p[perm];
+}
+
+/* ===================== HELPERS ===================== */
+const $=s=>document.querySelector(s);
+const el=(id)=>document.getElementById(id);
+function todayISO(){return new Date().toISOString().slice(0,10);}
+function nowTime(){return new Date().toTimeString().slice(0,5);} // "HH:MM"
+function fmtDate(iso){ if(!iso) return "—"; const [y,m,d]=iso.split("-"); return `${d}/${m}/${y}`; }
+function fmtDateTime(fecha,hora){ if(!fecha) return "—"; return fmtDate(fecha)+(hora?' '+hora:''); }
+function diasEnPatio(rec){
+  if(!rec.fechaIngreso) return 0;
+  const end = rec.estado==="Despachado" && rec.fechaSalida ? new Date(rec.fechaSalida) : new Date();
+  const ini = new Date(rec.fechaIngreso);
+  return Math.max(0, Math.round((end-ini)/86400000));
+}
+function estadoClass(e){ return e==="Disponible"?"ok": e==="En mantenimiento"?"warn":"sea"; }
+function pillClass(e){ return e==="Disponible"?"p-ok": e==="En mantenimiento"?"p-warn":"p-sea"; }
+function nextId(){
+  let max=0; INDEX.forEach(c=>{const n=parseInt((c.id||"").replace(/\D/g,""))||0; if(n>max)max=n;});
+  return "CONT-"+String(max+1).padStart(3,"0");
+}
+function toast(msg,err){ const t=el('toast'); t.textContent=msg; t.className="toast show"+(err?" err":""); clearTimeout(t._t); t._t=setTimeout(()=>t.className="toast",2600); }
+
+/* photo object: {t:'img'(base64 local) | 'drive'(subida a Drive) | 'url'(enlace externo legacy), v:string} */
+function photoHTML(p,sz){ if(!p) return ""; if(p.t==='url') return `<a class="urlchip" href="${p.v}" target="_blank">🔗 Foto externa</a>`;
+  return `<img src="${p.v}" loading="lazy">`; }
+
+/* resize + compress to base64 */
+function fileToPhoto(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>{ const img=new Image(); img.onload=()=>{
+        const MAX=1200; let{width:w,height:h}=img;
+        if(w>h&&w>MAX){h=h*MAX/w;w=MAX;} else if(h>MAX){w=w*MAX/h;h=MAX;}
+        const c=document.createElement('canvas'); c.width=w;c.height=h;
+        c.getContext('2d').drawImage(img,0,0,w,h);
+        res({t:'img',v:c.toDataURL('image/jpeg',0.62)});
+      }; img.onerror=rej; img.src=r.result;
+    }; r.onerror=rej; r.readAsDataURL(file);
+  });
+}
+
+/* ===================== LOAD RECORD ===================== */
+async function loadRec(id){ if(cache[id]) return cache[id]; const r=await getJSON("pc_cont_"+id,null); if(r)cache[id]=r; return r; }
+async function saveRec(rec, opType){
+  // Si hay nube conectada: sube fotos nuevas y empuja el registro
+  if(CLOUD_URL && !SESSION){
+    rec._pending=true;
+    toast("Guardado en el equipo · inicie sesión para sincronizar con la nube",true);
+    showLogin();
+  }else if(CLOUD_URL){
+    if(!can(opType)){
+      rec._pending=true;
+      toast(`Su rol (${SESSION.rol}) no tiene permiso para esto · guardado solo en el equipo`,true);
+    }else{
+      try{
+        const up=await uploadPhotosOf(rec,opType);
+        await cloudPost({action:'save',record:rec,opType});
+        rec._pending = up.fail>0;
+        if(up.fail>0) toast(`Guardado · ${up.fail} foto(s) no subieron: ${up.errors[0]}`,true);
+      }catch(e){
+        rec._pending=true;
+        toast("Guardado en el equipo · "+e.message,true);
+      }
+    }
+  }
+  rec.actualizado=new Date().toISOString();
+  cache[rec.id]=rec;
+  await setJSON("pc_cont_"+rec.id,rec);
+  // update index
+  const sum={id:rec.id,numero:rec.numero,tipo:rec.tipo,estado:rec.estado,ubicacion:rec.ubicacion,cliente:rec.cliente||"",fechaIngreso:rec.fechaIngreso,fechaSalida:rec.fechaSalida||""};
+  const i=INDEX.findIndex(x=>x.id===rec.id);
+  if(i<0) INDEX.unshift(sum); else INDEX[i]=sum;
+  await setJSON("pc_index",INDEX);
+}
+
+/* ===================== GOOGLE DRIVE / SHEETS (nube) ===================== */
+function forceReLogin(reason){
+  SESSION=null; store.del('pc_session');
+  const b=el('userBadge'); if(b) b.innerHTML='';
+  showLogin(); toast(reason||'Su sesión expiró. Ingrese nuevamente.',true);
+}
+async function cloudPost(payload){
+  if(!CLOUD_URL) throw new Error("Sin conexión: configure la URL del servicio en «Más».");
+  if(SESSION && !payload.token) payload.token=SESSION.token;
+  if(!payload.device) payload.device=(navigator.userAgent||'').slice(0,180);
+  let res;
+  try{
+    res=await fetch(CLOUD_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
+  }catch(netErr){
+    console.error('cloudPost · fallo de red:',netErr);
+    throw new Error('No se pudo contactar el servicio (revise su conexión a internet o la URL configurada).');
+  }
+  const txt=await res.text();
+  let j;
+  try{ j=JSON.parse(txt); }
+  catch(parseErr){
+    console.error('cloudPost · respuesta no es JSON. Primeros 300 caracteres:',txt.slice(0,300));
+    if(/accounts\.google\.com|<html/i.test(txt)){
+      throw new Error('Google devolvió una página de acceso en vez de datos. Revise que el despliegue tenga "Quién tiene acceso: Cualquier persona".');
+    }
+    throw new Error('Respuesta inesperada del servicio. Verifique que la URL termine en /exec y sea la última versión desplegada.');
+  }
+  if(j && j.ok===false){
+    console.error('cloudPost · acción:',payload.action,'· error del backend:',j.error);
+    if(/sesi[oó]n/i.test(j.error||'') && payload.action!=='checkSession' && payload.action!=='logout'){
+      forceReLogin('Su sesión expiró o no es válida. Ingrese nuevamente.');
+    }
+    throw new Error(j.error||'Error del servidor');
+  }
+  return j;
+}
+
+/* ===================== AUTENTICACIÓN (OTP por correo) ===================== */
+let LW_EMAIL="";
+
+function applyRoleUI(){
+  const ni=el('navIngreso'), ns=el('navSalida');
+  if(ni) ni.style.display = can('ingreso') ? '' : 'none';
+  if(ns) ns.style.display = can('salida') ? '' : 'none';
+}
+
+function showLogin(){ el('loginWall').style.display='flex'; }
+function hideLogin(){ el('loginWall').style.display='none'; }
+
+async function checkAuth(){
+  // Sin cloud configurado → modo local, sin autenticación requerida
+  if(!CLOUD_URL){ hideLogin(); applyRoleUI(); return; }
+  const s=await store.get('pc_session');
+  if(s){
+    try{
+      const parsed=JSON.parse(s);
+      const j=await cloudPost({action:'checkSession',token:parsed.token});
+      if(j.ok){
+        SESSION={token:parsed.token,email:j.email,nombre:j.nombre,rol:j.rol,cliente:j.cliente||''};
+        await store.set('pc_session',JSON.stringify(SESSION));
+        hideLogin(); updateUserBadge(); applyRoleUI(); startAutoSync();
+        const r=await silentCloudSync();
+        if(!r.ok) toast('No se pudo traer la información de la nube: '+r.error,true);
+        return;
+      }
+    }catch(e){}
+  }
+  SESSION=null; await store.del('pc_session'); showLogin(); applyRoleUI();
+}
+
+function updateUserBadge(){
+  const b=el('userBadge'); if(!b||!SESSION) return;
+  const clienteTag = (SESSION.rol==='Consulta' && SESSION.cliente) ? ` · 👁 ${SESSION.cliente.split(',')[0].trim()}` : '';
+  b.innerHTML=`<div class="u-bar">
+    <div class="u-av">👤</div>
+    <div class="u-info">
+      <span class="u-name">${SESSION.nombre||SESSION.email}${clienteTag}</span>
+      <span class="u-role">${SESSION.rol||'Operario'} · <span id="liveDot" style="color:var(--ok)">🟢 En vivo</span></span>
+    </div>
+    <button class="u-out" onclick="logout()">↩ Salir</button>
+  </div>`;
+}
+
+async function requestOTP(){
+  const email=el('lw_email').value.trim();
+  if(!email||!email.includes('@')){ toast('Ingrese un correo válido',true); return; }
+  if(!CLOUD_URL){ toast('Primero configure la URL del servicio (sección inferior)',true); return; }
+  LW_EMAIL=email;
+  const btn=el('lw_btn1'); btn.disabled=true; btn.textContent='Enviando…';
+  try{
+    await cloudPost({action:'requestOTP',email});
+    el('lw-step1').style.display='none';
+    el('lw-step2').style.display='block';
+    el('lw_sent').textContent=email;
+    el('lw_code').value=''; el('lw_code').focus();
+    toast('Código enviado · revise su correo');
+  }catch(e){ toast(e.message||'No se pudo enviar',true); }
+  btn.disabled=false; btn.textContent='Enviar código →';
+}
+
+async function verifyOTP(){
+  const code=el('lw_code').value.trim();
+  if(code.length<6){ toast('El código tiene 6 dígitos',true); return; }
+  const btn=el('lw_btn2'); btn.disabled=true; btn.textContent='Verificando…';
+  try{
+    const j=await cloudPost({action:'verifyOTP',email:LW_EMAIL,code});
+    SESSION={token:j.token,email:j.email,nombre:j.nombre,rol:j.rol,cliente:j.cliente||''};
+    await store.set('pc_session',JSON.stringify(SESSION));
+    hideLogin(); updateUserBadge(); applyRoleUI();
+    toast('¡Bienvenido, '+j.nombre+'!');
+    startAutoSync();
+    const r=await silentCloudSync();
+    if(!r.ok) toast('No se pudo traer la información de la nube: '+r.error,true);
+  }catch(e){ toast(e.message||'Código incorrecto o expirado',true); }
+  btn.disabled=false; btn.textContent='✓ Verificar e ingresar';
+}
+
+/* ===================== SINCRONIZACIÓN AUTOMÁTICA ===================== */
+/* No es "push" en tiempo real (Apps Script no lo soporta) — es un sondeo
+   silencioso cada 25s mientras la app está abierta y visible, más al iniciar
+   sesión y al volver a la pestaña. En la práctica, para un equipo pequeño,
+   se ve y se siente como tiempo real. */
+function startAutoSync(){
+  stopAutoSync();
+  SYNC_INTERVAL=setInterval(()=>{
+    if(document.visibilityState==='visible') silentCloudSync();
+  },25000);
+}
+function stopAutoSync(){
+  if(SYNC_INTERVAL){ clearInterval(SYNC_INTERVAL); SYNC_INTERVAL=null; }
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible' && SESSION && CLOUD_URL) silentCloudSync();
+});
+
+async function silentPushPending(){
+  if(!can()) return; // rol sin permisos de escritura (p.ej. Consulta): nada que reintentar
+  const pendingIds=INDEX.filter(c=>cache[c.id]&&cache[c.id]._pending).map(c=>c.id);
+  for(const id of pendingIds){
+    const r=cache[id]; if(!r) continue;
+    try{
+      const up=await uploadPhotosOf(r);
+      await cloudPost({action:'save',record:r});
+      r._pending = up.fail>0;
+      await setJSON('pc_cont_'+id,r);
+    }catch(e){ console.warn('Reintento de subida pendiente falló para',id,':',e.message); }
+  }
+}
+async function silentCloudSync(){
+  if(!CLOUD_URL || !SESSION) return {ok:true,skipped:true};
+  try{
+    await silentPushPending();
+    const j=await cloudPost({action:'list'});
+    const recs=j.records||[];
+    const cloudIds=new Set(recs.map(r=>r.id));
+    let changed=false;
+    for(const r of recs){
+      const local=cache[r.id];
+      if(!local){ cache[r.id]=r; await setJSON('pc_cont_'+r.id,r); changed=true; continue; }
+      if(local._pending) continue; // hay cambios locales sin subir aún: no los pisamos
+      if((r.actualizado||'') > (local.actualizado||'')){ cache[r.id]=r; await setJSON('pc_cont_'+r.id,r); changed=true; }
+    }
+    // Quitar localmente lo que ya no está en la nube (borrado por alguien, o fuera
+    // del alcance de cliente de este usuario) — nunca se borra algo con cambios sin subir.
+    for(const id of Object.keys(cache)){
+      if(!cloudIds.has(id) && !(cache[id] && cache[id]._pending)){
+        delete cache[id]; await store.del('pc_cont_'+id); changed=true;
+      }
+    }
+    // Reconstruir el índice: lo que llegó de la nube, más los pendientes locales que
+    // todavía no se han podido subir (para no perderlos de la lista mientras tanto)
+    const newIndex=recs.map(r=>({id:r.id,numero:r.numero,tipo:r.tipo,estado:r.estado,ubicacion:r.ubicacion,cliente:r.cliente||"",fechaIngreso:r.fechaIngreso,fechaSalida:r.fechaSalida||""}));
+    for(const c of INDEX){ if(!cloudIds.has(c.id) && cache[c.id] && cache[c.id]._pending) newIndex.push(c); }
+    newIndex.sort((a,b)=> a.id<b.id?1:-1);
+    INDEX=newIndex;
+    await setJSON('pc_index',INDEX);
+    LAST_REFRESH=new Date();
+    if(changed){
+      if(el('sc-home')&&el('sc-home').classList.contains('on')) renderHome();
+      if(el('sc-patio')&&el('sc-patio').classList.contains('on')) renderPatio();
+    }
+    return {ok:true,count:recs.length};
+  }catch(e){
+    console.warn('Sincronización automática falló:',e.message);
+    return {ok:false,error:e.message};
+  }
+}
+
+async function clearLocalCloudData(){
+  // Borra la copia local de contenedores SINCRONIZADOS (deja intactos los que
+  // tengan cambios sin subir, para no perder trabajo de quien está saliendo).
+  const ids=new Set([...INDEX.map(c=>c.id), ...Object.keys(cache)]);
+  for(const id of ids){
+    if(cache[id] && cache[id]._pending) continue;
+    delete cache[id];
+    await store.del('pc_cont_'+id);
+  }
+  INDEX=INDEX.filter(c=>cache[c.id] && cache[c.id]._pending);
+  await setJSON('pc_index',INDEX);
+}
+async function logout(){
+  if(!confirm('¿Cerrar sesión?')) return;
+  if(CLOUD_URL&&SESSION){ try{ await cloudPost({action:'logout',token:SESSION.token}); }catch(e){} }
+  stopAutoSync();
+  SESSION=null; await store.del('pc_session');
+  await clearLocalCloudData();
+  const b=el('userBadge'); if(b) b.innerHTML='';
+  el('lw_email').value=''; el('lw_code').value='';
+  el('lw-step1').style.display='block'; el('lw-step2').style.display='none';
+  showLogin(); applyRoleUI(); toast('Sesión cerrada');
+}
+
+async function saveCloudUrlFromLogin(){
+  const u=el('lw_cloudUrl').value.trim();
+  CLOUD_URL=u; await store.set('pc_cloud_url',u);
+  if(!u){ toast('URL eliminada'); return; }
+  try{ const j=await cloudPost({action:'ping'}); BACKEND_VERSION=j.version||'(sin versión)'; toast('✓ Conectado · ahora ingrese con su correo'); }
+  catch(e){ toast('No conectó: '+e.message,true); }
+}
+async function uploadPhotosOf(rec, opType){
+  const result={ok:0,fail:0,errors:[]};
+  async function up(arr,etiqueta){
+    if(!arr) return;
+    for(let i=0;i<arr.length;i++){
+      const p=arr[i];
+      if(p.t!=='img') continue; // ya está en Drive o es enlace externo, no re-subir
+      try{
+        const r=await cloudPost({action:'upload',data:p.v,name:rec.numero+'_'+rec.id+'_'+Date.now()+'_'+i+'.jpg',opType});
+        arr[i]={t:'drive',v:r.url,id:r.id,view:r.view};
+        result.ok++;
+      }catch(e){
+        result.fail++; result.errors.push(etiqueta+' · '+e.message);
+        console.error('Error subiendo foto ('+etiqueta+') de',rec.id,e);
+      }
+    }
+  }
+  if(rec.ingreso) await up(rec.ingreso.fotos,'Ingreso');
+  for(const m of (rec.mantenimientos||[])) await up(m.fotos,'Mantenimiento');
+  if(rec.salida) await up(rec.salida.fotos,'Salida');
+  return result;
+}
+async function saveCloudUrl(){
+  const u=el('cloudUrl').value.trim();
+  CLOUD_URL=u; await store.set('pc_cloud_url',u);
+  if(!u){ toast("Conexión eliminada"); BACKEND_VERSION=""; renderMore(); return; }
+  toast("Probando conexión…");
+  try{
+    const j=await cloudPost({action:'ping'});
+    BACKEND_VERSION=j.version||'(sin versión)';
+    toast("✓ Conectado · ahora inicie sesión con su correo");
+    if(!SESSION) await checkAuth(); // fuerza el login: conectar la URL no es lo mismo que iniciar sesión
+  }
+  catch(e){ toast("No se pudo conectar: "+e.message,true); }
+  renderMore();
+}
+let BACKEND_VERSION="";
+let LAST_SYNC=null;
+async function cloudPushAll(){
+  if(!CLOUD_URL){ toast("Conecte Google Drive primero",true); return; }
+  if(!SESSION){ toast("Inicie sesión antes de subir a la nube",true); showLogin(); return; }
+  if(!can()){ toast(`Su rol (${SESSION.rol}) es de solo consulta · no hay nada que subir`,true); return; }
+  toast("Subiendo todo a la nube…");
+  let n=0, errList=[];
+  for(const c of INDEX){
+    const r=await loadRec(c.id);
+    try{
+      const up=await uploadPhotosOf(r);
+      await cloudPost({action:'save',record:r});
+      r._pending = up.fail>0;
+      await setJSON("pc_cont_"+r.id,r);
+      if(up.fail>0) errList.push({id:c.id,numero:c.numero,error:up.errors[0]});
+      else n++;
+    }catch(e){
+      errList.push({id:c.id,numero:c.numero,error:e.message});
+      if(/sesi[oó]n/i.test(e.message)) break; // sesión inválida: no insistir con el resto, ya se forzó el reingreso
+    }
+  }
+  LAST_SYNC={fecha:new Date().toLocaleString('es-CO'),ok:n,fail:errList.length,errors:errList};
+  if(errList.length){ console.table(errList); toast(`Subidos ${n}, fallaron ${errList.length} · detalle en Más`,true); }
+  else toast(`✓ ${n} contenedores en la nube`);
+  if(el('sc-more').classList.contains('on')) renderMore();
+}
+async function cloudPull(){
+  if(!CLOUD_URL){ toast("Conecte Google Drive primero",true); return; }
+  if(!confirm("Esto reemplazará el inventario de este equipo con lo que hay en la nube. ¿Continuar?")) return;
+  toast("Trayendo de la nube…");
+  try{
+    const j=await cloudPost({action:'list'});
+    const recs=j.records||[];
+    Object.keys(cache).forEach(k=>delete cache[k]); INDEX=[];
+    for(const r of recs){ cache[r.id]=r; await setJSON("pc_cont_"+r.id,r);
+      INDEX.push({id:r.id,numero:r.numero,tipo:r.tipo,estado:r.estado,ubicacion:r.ubicacion,fechaIngreso:r.fechaIngreso,fechaSalida:r.fechaSalida||""}); }
+    INDEX.sort((a,b)=> a.id<b.id?1:-1);
+    await setJSON("pc_index",INDEX);
+    toast(`✓ ${recs.length} contenedores cargados`); go('home');
+  }catch(e){ toast("No se pudo: "+e.message,true); }
+}
+
+/* ===================== SEED (datos actuales del Excel) ===================== */
+async function seedIfEmpty(){
+  const idx=await getJSON("pc_index",null);
+  if(idx!==null){ INDEX=idx; return; }
+  if(CLOUD_URL){ INDEX=[]; await setJSON("pc_index",INDEX); return; } // con nube conectada, la nube es la única fuente de verdad
+  const seed=[
+    {id:"CONT-001",numero:"TCKU3456781",tipo:"20' Dry",estado:"Disponible",ubicacion:"Patio A-01",fechaIngreso:"2026-01-10",cliente:"Naviera Caribe SAS",
+     ingreso:{fecha:"2026-01-10",ubicacion:"Patio A-01",registradoPor:"Operaciones",observaciones:"Sin novedad. Ingreso inicial.",fotos:[{t:'url',v:'https://drive.google.com/link1'}]},
+     mantenimientos:[],movimientos:[],salida:null},
+    {id:"CONT-002",numero:"MSCU1234560",tipo:"40' HC",estado:"En mantenimiento",ubicacion:"Taller",fechaIngreso:"2026-01-15",cliente:"Comercializadora Andina",
+     ingreso:{fecha:"2026-01-15",ubicacion:"Patio A-02",registradoPor:"Operaciones",observaciones:"Daño lateral izquierdo detectado.",fotos:[{t:'url',v:'https://drive.google.com/link2'}]},
+     mantenimientos:[{tipo:"Reparación estructural",fecha:"2026-02-01",tecnico:"Taller P&C",descripcion:"Reparación de daño lateral izquierdo.",estadoResultante:"En mantenimiento",costo:"850000",fotos:[{t:'url',v:'https://drive.google.com/link3'}]}],
+     movimientos:[{origen:"Patio A-02",destino:"Taller",fecha:"2026-02-01",responsable:"Operaciones",motivo:"Ingreso a taller",equipo:"Reachstacker"}],salida:null},
+    {id:"CONT-003",numero:"GESU9876543",tipo:"40' Dry",estado:"Disponible",ubicacion:"Patio B-03",fechaIngreso:"2026-02-01",cliente:"Naviera Caribe SAS",
+     ingreso:{fecha:"2026-02-01",ubicacion:"Patio B-03",registradoPor:"Operaciones",observaciones:"Sin novedad. Ingreso inicial.",fotos:[{t:'url',v:'https://drive.google.com/link4'}]},
+     mantenimientos:[],movimientos:[],salida:null},
+    {id:"CONT-004",numero:"HLXU2345678",tipo:"20' Reefer",estado:"Despachado",ubicacion:"Despachado",fechaIngreso:"2026-01-20",fechaSalida:"2026-03-05",cliente:"Comercializadora Andina",
+     ingreso:{fecha:"2026-01-20",ubicacion:"Patio C-01",registradoPor:"Operaciones",observaciones:"Reefer operativo.",fotos:[{t:'url',v:'https://drive.google.com/link5'}]},
+     mantenimientos:[],movimientos:[],
+     salida:{fecha:"2026-03-05",responsable:"Juan Pérez",cliente:"Cliente final",booking:"BKG-00412",transportista:"Transporte XYZ",placa:"",sello:"",observaciones:"Entregado conforme.",fotos:[{t:'url',v:'https://drive.google.com/link6'}]}},
+    {id:"CONT-005",numero:"CMAU8765432",tipo:"40' HC",estado:"Disponible",ubicacion:"Patio A-02",fechaIngreso:"2026-02-10",cliente:"",
+     ingreso:{fecha:"2026-02-10",ubicacion:"Patio A-02",registradoPor:"Operaciones",observaciones:"Sin novedad. Traslado interno.",fotos:[{t:'url',v:'https://drive.google.com/link7'}]},
+     mantenimientos:[],movimientos:[],salida:null}
+  ];
+  INDEX=[];
+  for(const r of seed){ r.creado=new Date().toISOString(); r.actualizado=r.creado; await setJSON("pc_cont_"+r.id,r); cache[r.id]=r;
+    INDEX.push({id:r.id,numero:r.numero,tipo:r.tipo,estado:r.estado,ubicacion:r.ubicacion,cliente:r.cliente||"",fechaIngreso:r.fechaIngreso,fechaSalida:r.fechaSalida||""}); }
+  await setJSON("pc_index",INDEX);
+}
+
+/* ===================== RENDER: DASHBOARD ===================== */
+function renderHome(){
+  const enPatio=INDEX.filter(c=>c.estado!=="Despachado");
+  const disp=INDEX.filter(c=>c.estado==="Disponible").length;
+  const mant=INDEX.filter(c=>c.estado==="En mantenimiento").length;
+  const desp=INDEX.filter(c=>c.estado==="Despachado").length;
+  const dias=enPatio.map(c=>diasEnPatio(c)); const prom=dias.length?Math.round(dias.reduce((a,b)=>a+b,0)/dias.length):0;
+  const alertas=enPatio.filter(c=>diasEnPatio(c)>30).sort((a,b)=>diasEnPatio(b)-diasEnPatio(a));
+  // type counts
+  const tc={}; TIPOS.forEach(t=>tc[t]=0); INDEX.forEach(c=>{if(tc[c.tipo]!=null)tc[c.tipo]++;});
+  const maxt=Math.max(1,...Object.values(tc));
+
+  el('sc-home').innerHTML=`
+    <div class="kpis">
+      <div class="kpi"><div class="lbl">📦 Total en patio</div><div class="num">${enPatio.length}</div><div class="foot">contenedores activos</div></div>
+      <div class="kpi k-ok"><div class="lbl">✅ Disponibles</div><div class="num">${disp}</div><div class="foot">listos para despacho</div></div>
+      <div class="kpi k-warn"><div class="lbl">🔧 Mantenimiento</div><div class="num">${mant}</div><div class="foot">en reparación</div></div>
+      <div class="kpi k-sea"><div class="lbl">🚀 Despachados</div><div class="num">${desp}</div><div class="foot">ciclo cerrado</div></div>
+    </div>
+    <div class="kpis" style="margin-top:12px">
+      <div class="kpi"><div class="lbl">📊 Prom. días en patio</div><div class="num">${prom}</div><div class="foot">de los activos</div></div>
+      <div class="kpi"><div class="lbl">📋 Total registros</div><div class="num">${INDEX.length}</div><div class="foot">histórico completo</div></div>
+    </div>
+
+    ${alertas.length?`<div class="sec-h">⚠️ Alertas · más de 30 días</div>
+    <div class="clist">${alertas.map(c=>cardHTML(c,true)).join("")}</div>`:""}
+
+    <div class="sec-h">Distribución por tipo</div>
+    <div class="tbars">${TIPOS.map(t=>`
+      <div class="tbar"><div class="tn">${t}</div><div class="tt"><i style="width:${tc[t]/maxt*100}%"></i></div><div class="tv">${tc[t]}</div></div>`).join("")}
+    </div>
+
+    <div class="sec-h">Contenedores activos</div>
+    <div class="clist">${enPatio.length?enPatio.map(c=>cardHTML(c)).join(""):`<div class="empty"><div class="big">📦</div>No hay contenedores en patio.</div>`}</div>
+  `;
+}
+function cardHTML(c,alert){
+  const d=diasEnPatio(c);
+  const rec=cache[c.id];
+  const tareasPend=rec&&rec.tareas?(rec.tareas.filter(t=>t.estado!=='Hecha').length):0;
+  return `<div class="ccard" onclick="openDetalle('${c.id}')">
+    <div class="stripe s-${estadoClass(c.estado)}"></div>
+    <div class="ico">${ICONO(c.tipo)}</div>
+    <div class="mid">
+      <div class="cn">${c.numero}${tareasPend?` <span style="background:var(--warn);color:#fff;font-size:10px;padding:1px 6px;border-radius:9px;font-weight:700;vertical-align:middle">${tareasPend}</span>`:''}</div>
+      <div class="meta"><b>${c.tipo}</b> · ${c.ubicacion||"—"}${c.cliente?` · ${c.cliente}`:''}
+        <span class="daypill ${d>30&&c.estado!=='Despachado'?'alert':''}">${d} días</span></div>
+    </div>
+    <span class="pill ${pillClass(c.estado)}">${c.estado}</span>
+    <span class="arrow">›</span>
+  </div>`;
+}
+
+/* ===================== RENDER: PATIO LIST ===================== */
+let patioFilter="";
+function timeAgo(d){
+  if(!d) return '';
+  const s=Math.round((Date.now()-d.getTime())/1000);
+  if(s<5) return 'justo ahora'; if(s<60) return 'hace '+s+'s'; return 'hace '+Math.round(s/60)+' min';
+}
+function renderPatio(){
+  const q=patioFilter.toLowerCase();
+  const list=INDEX.filter(c=>!q||c.numero.toLowerCase().includes(q)||c.id.toLowerCase().includes(q)||(c.tipo||"").toLowerCase().includes(q)||(c.estado||"").toLowerCase().includes(q)||(c.cliente||"").toLowerCase().includes(q));
+  el('sc-patio').innerHTML=`
+    <div class="searchbox"><span class="si">🔍</span><input id="patioSearch" placeholder="Buscar N° contenedor, tipo, cliente…" value="${patioFilter}"></div>
+    <div class="sec-h" style="margin-top:18px;justify-content:space-between">
+      <span>Base de datos · ${list.length} de ${INDEX.length}</span>
+      ${SESSION&&CLOUD_URL?`<span style="font-size:11px;color:var(--mut2);cursor:pointer;letter-spacing:.3px" onclick="manualRefreshPatio()">🔄 ${LAST_REFRESH?timeAgo(LAST_REFRESH):'actualizar'}</span>`:''}
+    </div>
+    <div class="clist">${list.length?list.map(c=>cardHTML(c)).join(""):`<div class="empty"><div class="big">🔎</div>Sin resultados.</div>`}</div>
+  `;
+  el('patioSearch').oninput=e=>{patioFilter=e.target.value; const l=el('sc-patio'); const sb=el('patioSearch'); const pos=sb.selectionStart; renderPatio(); const ns=el('patioSearch'); ns.focus(); ns.setSelectionRange(pos,pos);};
+}
+async function manualRefreshPatio(){ toast('Actualizando…'); await silentCloudSync(); renderPatio(); }
+
+/* ===================== PHOTO WIDGET ===================== */
+const photoBuf={ingreso:[],mant:[],salida:[]};
+function photoWidget(key){
+  return `<div class="photos" id="ph-${key}">
+    ${photoBuf[key].map((p,i)=>`<div class="ptile"><img src="${p.v}"><button class="del" onclick="rmPhoto('${key}',${i})">✕</button></div>`).join("")}
+    <label class="padd"><span class="pi">📷</span><span class="pt">Tomar foto</span>
+      <input type="file" accept="image/*" capture="environment" multiple onchange="addPhotos('${key}',this)"></label>
+  </div>`;
+}
+async function addPhotos(key,input){
+  const files=[...input.files]; input.value="";
+  for(const f of files){ try{ photoBuf[key].push(await fileToPhoto(f)); }catch(e){toast("No se pudo procesar la foto",true);} }
+  const c=el('ph-'+key); if(c) c.outerHTML=photoWidget(key);
+}
+function rmPhoto(key,i){ photoBuf[key].splice(i,1); const c=el('ph-'+key); if(c) c.outerHTML=photoWidget(key); }
+
+/* ===================== RENDER: INGRESO ===================== */
+function noAutorizado(msg){
+  return `<div class="empty"><div class="big">🔒</div>${msg||'Su rol no tiene acceso a esta sección.'}</div>`;
+}
+/* ===================== LISTA DE CLIENTES ===================== */
+async function loadClientes(){
+  // Primero carga la lista guardada; si está vacía, la inicializa con clientes ya usados en contenedores
+  const saved=await getJSON('pc_clientes_lista',null);
+  if(saved && Array.isArray(saved) && saved.length){
+    CLIENTES_LISTA=saved; return;
+  }
+  const set=new Set(INDEX.map(c=>c.cliente).filter(Boolean));
+  CLIENTES_LISTA=[...set].sort();
+  await setJSON('pc_clientes_lista',CLIENTES_LISTA);
+}
+async function saveClientes(){ await setJSON('pc_clientes_lista',CLIENTES_LISTA); }
+function clientesOpts(sel=''){
+  return CLIENTES_LISTA.map(c=>`<option value="${c}"${c===sel?' selected':''}>${c}</option>`).join('');
+}
+function clienteSelect(id,sel='',placeholder='— Sin asignar —'){
+  return `<select id="${id}"><option value="">${placeholder}</option>${clientesOpts(sel)}</select>`;
+}
+/* Abre modal para gestionar la lista de clientes (solo Administrador) */
+function openGestorClientes(){
+  if(!can('gestionUsuarios')){ toast('Solo el Administrador puede gestionar la lista de clientes',true); return; }
+  const html=`<div class="modal-bg" id="modalClientes" onclick="if(event.target===this)closeModal('modalClientes')">
+    <div class="modal-box">
+      <div class="sec-h" style="margin:0 0 10px">🏢 Clientes registrados</div>
+      <div id="clientesListEl" style="margin-bottom:12px">${CLIENTES_LISTA.map((c,i)=>`
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+          <span style="flex:1;font-size:13px;color:var(--ink)">${c}</span>
+          <button class="btn-gh" style="padding:4px 10px;font-size:11px" onclick="removeCliente(${i})">✕</button>
+        </div>`).join('')||'<div class="hint">Aún no hay clientes registrados.</div>'}
+      </div>
+      <div style="display:flex;gap:8px">
+        <input id="nuevoClienteInput" placeholder="Nombre del nuevo cliente" style="flex:1;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--surf);color:var(--ink);font-size:13px">
+        <button class="btn btn-acc" style="padding:10px 14px" onclick="addCliente()">+ Agregar</button>
+      </div>
+      <div class="hint" style="margin-top:8px">Este listado aparece como desplegable en los formularios de ingreso, salida y búsqueda de clientes.</div>
+      <button class="btn-gh" style="margin-top:14px;width:100%" onclick="closeModal('modalClientes')">Cerrar</button>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend',html);
+  setTimeout(()=>el('nuevoClienteInput').focus(),100);
+}
+async function addCliente(){
+  const v=(el('nuevoClienteInput').value||'').trim();
+  if(!v){ toast('Escriba el nombre del cliente',true); return; }
+  if(CLIENTES_LISTA.includes(v)){ toast('Ese cliente ya está en la lista',true); return; }
+  CLIENTES_LISTA.push(v); CLIENTES_LISTA.sort();
+  await saveClientes();
+  toast('Cliente agregado: '+v);
+  closeModal('modalClientes'); openGestorClientes();
+}
+async function removeCliente(i){
+  if(!confirm(`¿Eliminar "${CLIENTES_LISTA[i]}" de la lista? (Los contenedores ya asignados no se modifican)`)) return;
+  CLIENTES_LISTA.splice(i,1);
+  await saveClientes();
+  closeModal('modalClientes'); openGestorClientes();
+}
+function closeModal(id){ const m=el(id); if(m) m.remove(); }
+function renderIngreso(){
+  if(!can('ingreso')){ el('sc-ingreso').innerHTML=noAutorizado('Su rol no tiene permiso para registrar ingresos.'); return; }
+  photoBuf.ingreso=[];
+  el('sc-ingreso').innerHTML=`
+    <div class="form">
+      <div class="fld"><label>N° de Contenedor <span class="req">*</span></label>
+        <input id="i_num" class="mono" placeholder="Ej. TCKU3456781" style="text-transform:uppercase"></div>
+      <div class="f2">
+        <div class="fld"><label>Tipo <span class="req">*</span></label>
+          <select id="i_tipo">${TIPOS.map(t=>`<option>${t}</option>`).join("")}</select></div>
+        <div class="fld"><label>Fecha de ingreso <span class="req">*</span></label>
+          <input type="date" id="i_fecha" value="${todayISO()}"></div>
+      </div>
+      <div class="fld"><label>Hora de ingreso <span class="req">*</span></label>
+        <input type="time" id="i_hora" value="${nowTime()}"></div>
+      <div class="fld"><label>Ubicación inicial <span class="req">*</span></label>
+        <input id="i_ubi" list="ubis" placeholder="Patio A-01">
+        <datalist id="ubis">${UBIS.map(u=>`<option>${u}</option>`).join("")}</datalist></div>
+      <div class="f2">
+        <div class="fld"><label>N° de Booking</label><input id="i_booking" class="mono" placeholder="BKG-…"></div>
+        <div class="fld"><label>Cliente / empresa asociada</label>
+          ${clienteSelect('i_cliente','','— Sin asignar —')}
+          <div class="hint">Determina qué cliente verá este contenedor. ${can('gestionUsuarios')?'<span style="color:var(--acc);cursor:pointer;text-decoration:underline" onclick="openGestorClientes()">Gestionar lista</span>':''}</div>
+        </div>
+      </div>
+      <div class="fld"><label>Registrado por</label><input id="i_reg" placeholder="Nombre del responsable"></div>
+      <div class="fld"><label>Observaciones</label><textarea id="i_obs" placeholder="Estado del contenedor, novedades, daños visibles…"></textarea></div>
+      <div class="fld"><label>📷 Evidencia fotográfica de ingreso</label>${photoWidget('ingreso')}
+        <div class="hint">Tome fotos del estado del contenedor al ingresar.</div></div>
+      <button class="btn btn-acc" id="btnIngreso" onclick="guardarIngreso()">✓ Registrar ingreso</button>
+      <div style="height:8px"></div>
+    </div>`;
+}
+async function guardarIngreso(){
+  if(SAVING){ toast('Guardando, espere…'); return; }
+  if(!can('ingreso')){ toast('Su rol no tiene permiso para registrar ingresos',true); return; }
+  const num=el('i_num').value.trim().toUpperCase();
+  const fecha=el('i_fecha').value, ubi=el('i_ubi').value.trim();
+  const hora=el('i_hora').value||'';
+  if(!num){toast("Ingrese el N° de contenedor",true);return;}
+  if(!fecha){toast("Ingrese la fecha",true);return;}
+  if(!ubi){toast("Ingrese la ubicación",true);return;}
+  SAVING=true;
+  const btn=el('btnIngreso'); if(btn){btn.disabled=true;btn.textContent='Guardando…';}
+  const id=nextId();
+  const rec={id,numero:num,tipo:el('i_tipo').value,estado:"Disponible",ubicacion:ubi,fechaIngreso:fecha,horaIngreso:hora,fechaSalida:"",
+    cliente:el('i_cliente').value.trim(),
+    ingreso:{fecha,hora,ubicacion:ubi,registradoPor:el('i_reg').value.trim(),observaciones:el('i_obs').value.trim(),
+      booking:el('i_booking').value.trim(),fotos:[...photoBuf.ingreso]},
+    mantenimientos:[],movimientos:[],salida:null,tareas:[],creado:new Date().toISOString()};
+  await saveRec(rec,'ingreso');
+  SAVING=false;
+  toast("Ingreso registrado · "+id);
+  openDetalle(id);
+}
+
+/* ===================== RENDER: MANTENIMIENTO ===================== */
+function renderMant(){
+  if(!can('mantenimiento')){ el('sc-mant').innerHTML=noAutorizado('Su rol no tiene permiso para registrar mantenimientos.'); return; }
+  photoBuf.mant=[];
+  const activos=INDEX.filter(c=>c.estado!=="Despachado");
+  el('sc-mant').innerHTML=`
+    <div class="form">
+      <div class="fld"><label>Contenedor <span class="req">*</span></label>
+        <select id="m_cont"><option value="">— Seleccione —</option>${activos.map(c=>`<option value="${c.id}">${c.numero} · ${c.tipo}</option>`).join("")}</select></div>
+      <div class="f2">
+        <div class="fld"><label>Tipo de mantenimiento <span class="req">*</span></label>
+          <select id="m_tipo">${MTIPOS.map(t=>`<option>${t}</option>`).join("")}</select></div>
+        <div class="fld"><label>Fecha <span class="req">*</span></label><input type="date" id="m_fecha" value="${todayISO()}"></div>
+      </div>
+      <div class="fld"><label>Técnico responsable</label><input id="m_tec" placeholder="Nombre del técnico / taller"></div>
+      <div class="f2">
+        <div class="fld"><label>Estado resultante <span class="req">*</span></label>
+          <select id="m_estado"><option>En mantenimiento</option><option>Disponible</option></select></div>
+        <div class="fld"><label>Costo estimado (COP)</label><input type="number" id="m_costo" placeholder="0"></div>
+      </div>
+      <div class="fld"><label>Descripción / observaciones</label><textarea id="m_desc" placeholder="Trabajo realizado, repuestos, hallazgos…"></textarea></div>
+      <div class="fld"><label>📷 Evidencia del mantenimiento</label>${photoWidget('mant')}
+        <div class="hint">Antes/durante/después de la intervención.</div></div>
+      <button class="btn btn-acc" id="btnMant" onclick="guardarMant()">✓ Guardar mantenimiento</button>
+      <div style="height:8px"></div>
+    </div>`;
+}
+async function guardarMant(){
+  if(SAVING){ toast('Guardando, espere…'); return; }
+  if(!can('mantenimiento')){ toast('Su rol no tiene permiso para registrar mantenimientos',true); return; }
+  const id=el('m_cont').value; if(!id){toast("Seleccione un contenedor",true);return;}
+  SAVING=true;
+  const btn=el('btnMant'); if(btn){btn.disabled=true;btn.textContent='Guardando…';}
+  const rec=await loadRec(id);
+  if(!rec){toast("Contenedor no encontrado",true); SAVING=false; if(btn){btn.disabled=false;btn.textContent='✓ Guardar mantenimiento';} return;}
+  const estado=el('m_estado').value;
+  rec.mantenimientos.push({tipo:el('m_tipo').value,fecha:el('m_fecha').value,tecnico:el('m_tec').value.trim(),
+    descripcion:el('m_desc').value.trim(),estadoResultante:estado,costo:el('m_costo').value,fotos:[...photoBuf.mant]});
+  rec.estado=estado;
+  await saveRec(rec,'mantenimiento');
+  SAVING=false;
+  toast("Mantenimiento registrado ✓");
+  openDetalle(id);
+}
+
+/* ===================== RENDER: SALIDA ===================== */
+function renderSalida(){
+  if(!can('salida')){ el('sc-salida').innerHTML=noAutorizado('Su rol no tiene permiso para registrar salidas.'); return; }
+  photoBuf.salida=[];
+  const activos=INDEX.filter(c=>c.estado!=="Despachado");
+  el('sc-salida').innerHTML=`
+    <div class="form">
+      <div class="fld"><label>Contenedor <span class="req">*</span></label>
+        <select id="s_cont"><option value="">— Seleccione —</option>${activos.map(c=>`<option value="${c.id}">${c.numero} · ${c.tipo} · ${c.estado}</option>`).join("")}</select></div>
+      <div class="f2">
+        <div class="fld"><label>Fecha de salida <span class="req">*</span></label><input type="date" id="s_fecha" value="${todayISO()}"></div>
+        <div class="fld"><label>Hora de salida <span class="req">*</span></label><input type="time" id="s_hora" value="${nowTime()}"></div>
+      </div>
+      <div class="fld"><label>Responsable del despacho <span class="req">*</span></label><input id="s_resp" placeholder="Quien despacha"></div>
+      <div class="f2">
+        <div class="fld"><label>Cliente</label>
+          ${clienteSelect('s_cli','','— Sin asignar —')}
+        </div>
+        <div class="fld"><label>Destinatario</label><input id="s_dest" placeholder="Persona o empresa receptora"></div>
+      </div>
+      <div class="f2">
+        <div class="fld"><label>N° de Release</label><input id="s_release" class="mono" placeholder="REL-…"></div>
+        <div class="fld"><label>Transportista</label><input id="s_trans" placeholder="Empresa transporte"></div>
+      </div>
+      <div class="f2">
+        <div class="fld"><label>Placa del vehículo</label><input id="s_placa" class="mono" placeholder="ABC123" style="text-transform:uppercase"></div>
+        <div class="fld"><label>Sello de seguridad</label><input id="s_sello" class="mono" placeholder="N° sello"></div>
+      </div>
+      <div class="fld"><label>Observaciones</label><textarea id="s_obs" placeholder="Estado de entrega, novedades…"></textarea></div>
+      <div class="fld"><label>📷 Evidencia de salida</label>${photoWidget('salida')}
+        <div class="hint">Foto del contenedor sellado y/o cargado en el vehículo.</div></div>
+      <button class="btn btn-acc" id="btnSalida" onclick="guardarSalida()">⇥ Registrar salida / despacho</button>
+      <div style="height:8px"></div>
+    </div>`;
+}
+async function guardarSalida(){
+  if(SAVING){ toast('Guardando, espere…'); return; }
+  if(!can('salida')){ toast('Su rol no tiene permiso para registrar salidas',true); return; }
+  const id=el('s_cont').value; if(!id){toast("Seleccione un contenedor",true);return;}
+  const fecha=el('s_fecha').value, resp=el('s_resp').value.trim();
+  const hora=el('s_hora').value||'';
+  if(!fecha){toast("Ingrese la fecha de salida",true);return;}
+  if(!resp){toast("Ingrese el responsable",true);return;}
+  SAVING=true;
+  const btn=el('btnSalida'); if(btn){btn.disabled=true;btn.textContent='Guardando…';}
+  const rec=await loadRec(id); if(!rec){ SAVING=false; return; }
+  rec.salida={fecha,hora,responsable:resp,
+    cliente:el('s_cli').value.trim(),
+    destinatario:el('s_dest').value.trim(),
+    release:el('s_release').value.trim(),
+    transportista:el('s_trans').value.trim(),
+    placa:el('s_placa').value.trim().toUpperCase(),
+    sello:el('s_sello').value.trim(),
+    observaciones:el('s_obs').value.trim(),
+    fotos:[...photoBuf.salida]};
+  rec.estado="Despachado"; rec.fechaSalida=fecha; rec.ubicacion="Despachado";
+  await saveRec(rec,'salida');
+  SAVING=false;
+  toast("Salida registrada · contenedor despachado ✓");
+  openDetalle(id);
+}
+
+/* ===================== RENDER: MOVIMIENTO ===================== */
+function renderMov(preId){
+  if(!can('movimiento')){ el('sc-mov').innerHTML=noAutorizado('Su rol no tiene permiso para registrar traslados.'); return; }
+  const activos=INDEX.filter(c=>c.estado!=="Despachado");
+  el('sc-mov').innerHTML=`
+    <div class="form">
+      <div class="fld"><label>Contenedor <span class="req">*</span></label>
+        <select id="mv_cont"><option value="">— Seleccione —</option>${activos.map(c=>`<option value="${c.id}" ${c.id===preId?'selected':''}>${c.numero} · ${c.ubicacion}</option>`).join("")}</select></div>
+      <div class="f2">
+        <div class="fld"><label>Ubicación origen</label><input id="mv_org" list="ubis2" placeholder="Origen"></div>
+        <div class="fld"><label>Ubicación destino <span class="req">*</span></label><input id="mv_dst" list="ubis2" placeholder="Destino"></div>
+      </div>
+      <datalist id="ubis2">${UBIS.map(u=>`<option>${u}</option>`).join("")}</datalist>
+      <div class="f2">
+        <div class="fld"><label>Fecha <span class="req">*</span></label><input type="date" id="mv_fecha" value="${todayISO()}"></div>
+        <div class="fld"><label>Operario / responsable</label><input id="mv_resp" placeholder="Nombre"></div>
+      </div>
+      <div class="fld"><label>Motivo del traslado</label><input id="mv_mot" placeholder="Reubicación, inspección…"></div>
+      <div class="fld"><label>Equipo utilizado</label><input id="mv_eq" placeholder="Reachstacker, montacargas…"></div>
+      <button class="btn btn-acc" onclick="guardarMov()">↻ Registrar traslado</button>
+      <div style="height:8px"></div>
+    </div>`;
+  if(preId){ const sel=el('mv_cont'); loadRec(preId).then(r=>{ if(r) el('mv_org').value=r.ubicacion||""; }); }
+}
+async function guardarMov(){
+  if(!can('movimiento')){ toast('Su rol no tiene permiso para registrar traslados',true); return; }
+  const id=el('mv_cont').value; if(!id){toast("Seleccione un contenedor",true);return;}
+  const dst=el('mv_dst').value.trim(); if(!dst){toast("Indique destino",true);return;}
+  const rec=await loadRec(id); if(!rec)return;
+  rec.movimientos.push({origen:el('mv_org').value.trim()||rec.ubicacion,destino:dst,fecha:el('mv_fecha').value,
+    responsable:el('mv_resp').value.trim(),motivo:el('mv_mot').value.trim(),equipo:el('mv_eq').value.trim()});
+  rec.ubicacion=dst;
+  await saveRec(rec,'movimiento');
+  toast("Traslado registrado");
+  openDetalle(id);
+}
+
+/* ===================== RENDER: DETALLE ===================== */
+async function openDetalle(id){
+  CURRENT=id; const rec=await loadRec(id);
+  if(!rec){toast("No encontrado",true);return;}
+  const d=diasEnPatio(rec);
+  // timeline events
+  let ev=[];
+  if(rec.ingreso) ev.push({k:'sea',t:'Ingreso al patio',s:fmtDateTime(rec.ingreso.fecha, rec.ingreso.hora)+' · '+(rec.ingreso.ubicacion||''),
+    body:`<b>Registrado por:</b> ${rec.ingreso.registradoPor||'—'}<br><b>Obs:</b> ${rec.ingreso.observaciones||'—'}`,fotos:rec.ingreso.fotos});
+  (rec.movimientos||[]).forEach(m=>ev.push({k:'',t:'Traslado interno',s:fmtDate(m.fecha)+' · '+m.origen+' → '+m.destino,
+    body:`<b>Responsable:</b> ${m.responsable||'—'} · <b>Motivo:</b> ${m.motivo||'—'}${m.equipo?'<br><b>Equipo:</b> '+m.equipo:''}`,fotos:[]}));
+  (rec.mantenimientos||[]).forEach(m=>ev.push({k:'warn',t:'Mantenimiento · '+m.tipo,s:fmtDate(m.fecha)+(m.tecnico?' · '+m.tecnico:''),
+    body:`<b>Resultado:</b> ${m.estadoResultante}${m.costo?' · <b>Costo:</b> $'+Number(m.costo).toLocaleString('es-CO'):''}<br>${m.descripcion||'—'}`,fotos:m.fotos}));
+  if(rec.salida) ev.push({k:'ok',t:'Salida / despacho',s:fmtDateTime(rec.salida.fecha, rec.salida.hora)+(rec.salida.cliente?' · '+rec.salida.cliente:''),
+    body:`<b>Responsable:</b> ${rec.salida.responsable||'—'}`
+      +(rec.salida.cliente?`<br><b>Cliente:</b> ${rec.salida.cliente}`:'')
+      +(rec.salida.destinatario?`<br><b>Destinatario:</b> ${rec.salida.destinatario}`:'')
+      +(rec.salida.release?`<br><b>N° Release:</b> ${rec.salida.release}`:(rec.salida.booking?`<br><b>N° Booking:</b> ${rec.salida.booking}`:''))
+      +(rec.salida.transportista?`<br><b>Transportista:</b> ${rec.salida.transportista}`:'')
+      +(rec.salida.placa?` · <b>Placa:</b> ${rec.salida.placa}`:'')
+      +(rec.salida.sello?` · <b>Sello:</b> ${rec.salida.sello}`:'')
+      +`<br><b>Obs:</b> ${rec.salida.observaciones||'—'}`,
+    fotos:rec.salida.fotos});
+
+  // Tareas pendientes
+  const tareas=rec.tareas||[];
+  const pendientes=tareas.filter(t=>t.estado!=='Hecha');
+  const tareasHTML= can('ingreso')||can('mantenimiento') ? `
+    <div class="sec-h" style="margin-top:18px">
+      📋 Tareas pendientes
+      <span style="margin-left:auto;font-size:11px;color:var(--acc);cursor:pointer;font-weight:600" onclick="openNuevaTarea('${rec.id}')">+ Nueva tarea</span>
+    </div>
+    ${tareas.length===0?`<div class="hint" style="margin-bottom:10px">Sin tareas registradas.</div>`:
+      tareas.map((t,i)=>`
+        <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;margin-bottom:6px;background:var(--surf);border:1px solid ${t.estado==='Hecha'?'var(--line)':'var(--warn)'};border-radius:10px;opacity:${t.estado==='Hecha'?0.55:1}">
+          <span style="font-size:18px;margin-top:1px">${t.estado==='Hecha'?'✅':'🔲'}</span>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600;color:var(--ink);${t.estado==='Hecha'?'text-decoration:line-through':''}">${t.descripcion}</div>
+            ${t.asignado?`<div style="font-size:11px;color:var(--mut)">Asignado a: ${t.asignado}</div>`:''}
+            ${t.vence?`<div style="font-size:11px;color:${new Date(t.vence)<new Date()&&t.estado!=='Hecha'?'var(--warn)':'var(--mut)'}">Vence: ${fmtDate(t.vence)}</div>`:''}
+          </div>
+          ${t.estado!=='Hecha'?`<button class="btn-gh" style="padding:4px 10px;font-size:11px" onclick="marcarTareaHecha('${rec.id}',${i})">✓ Hecha</button>`:''}
+          ${can('eliminar')||can('ingreso')?`<button class="btn-gh" style="padding:4px 8px;font-size:11px" onclick="eliminarTarea('${rec.id}',${i})">✕</button>`:''}
+        </div>`).join('')
+    }`:
+    pendientes.length?`<div class="sec-h" style="margin-top:18px">📋 Tareas pendientes (${pendientes.length})</div>
+    ${pendientes.map(t=>`<div style="padding:9px 12px;margin-bottom:5px;background:var(--surf);border:1px solid var(--warn);border-radius:10px;font-size:12px;color:var(--ink)">${t.descripcion}${t.asignado?' · '+t.asignado:''}</div>`).join('')}`:'';
+
+  el('sc-detalle').innerHTML=`
+    <button class="btn-gh" style="width:auto;display:inline-flex;margin-bottom:14px" onclick="go('patio')">‹ Volver al patio</button>
+    <div class="dhead">
+      <div class="row1">
+        <div><div class="cn">${rec.numero}</div><div class="dt">${rec.id} · ${rec.tipo}</div></div>
+        <span class="pill ${pillClass(rec.estado)}">${rec.estado}</span>
+      </div>
+      <div class="dgrid">
+        <div class="dcell"><div class="l">Ubicación</div><div class="v">${rec.ubicacion||'—'}</div></div>
+        <div class="dcell"><div class="l">Días en patio</div><div class="v">${d} días</div></div>
+        <div class="dcell"><div class="l">Fecha ingreso</div><div class="v">${fmtDateTime(rec.fechaIngreso, rec.horaIngreso||rec.ingreso&&rec.ingreso.hora)}</div></div>
+        <div class="dcell"><div class="l">Fecha salida</div><div class="v">${fmtDateTime(rec.fechaSalida, rec.salida&&rec.salida.hora)}</div></div>
+        <div class="dcell" ${can('ingreso')?`onclick="editCliente('${rec.id}')" style="cursor:pointer;border:1.5px dashed var(--acc);background:var(--acc-soft)"`:''}>
+          <div class="l">Cliente${can('ingreso')?' ✎ Tocar para asignar/cambiar':''}</div><div class="v">${rec.cliente||'Sin asignar'}</div></div>
+      </div>
+    </div>
+
+    ${(can('mantenimiento')||can('movimiento')||can('salida'))?`
+    <div class="sec-h">Acciones rápidas</div>
+    <div class="btn-row" style="grid-template-columns:repeat(3,1fr)">
+      ${can('mantenimiento')?`<button class="btn-mini" onclick="go('mant');setTimeout(()=>{el('m_cont').value='${rec.id}'},60)"><span class="mi">🔧</span>Mantenim.</button>`:''}
+      ${can('movimiento')?`<button class="btn-mini" onclick="go('mov','${rec.id}')"><span class="mi">↻</span>Traslado</button>`:''}
+      ${can('salida')?`<button class="btn-mini" ${rec.estado==='Despachado'?'disabled style="opacity:.4"':''} onclick="go('salida');setTimeout(()=>{el('s_cont').value='${rec.id}'},60)"><span class="mi">⇥</span>Salida</button>`:''}
+    </div>`:''}
+
+    <div class="sec-h">📄 Generar acta / formato</div>
+    <div class="acta-opts">
+      <button class="btn-mini" onclick="acta('${rec.id}','ingreso')"><span class="mi">📥</span>Ingreso</button>
+      <button class="btn-mini" onclick="acta('${rec.id}','mantenimiento')"><span class="mi">🔧</span>Mantenim.</button>
+      <button class="btn-mini" ${rec.salida?'':'disabled style="opacity:.4"'} onclick="acta('${rec.id}','salida')"><span class="mi">📤</span>Salida</button>
+    </div>
+    <div class="btn-row" style="margin-top:10px">
+      <button class="btn-gh" onclick="shareWA('${rec.id}')">📲 Enviar por WhatsApp</button>
+      ${can('eliminar')?`<button class="btn-gh" onclick="delCont('${rec.id}')">🗑 Eliminar</button>`:''}
+    </div>
+
+    <div class="sec-h">Historial del contenedor</div>
+    ${tareasHTML}
+    <div class="timeline">
+      ${ev.map(e=>`<div class="tev ${e.k}">
+        <div class="th">${e.t}</div><div class="ts">${e.s}</div>
+        <div class="tbox">${e.body}
+          ${(e.fotos&&e.fotos.length)?`<div class="tphotos">${e.fotos.map(p=>p.t!=='url'?`<div class="tp" onclick="viewPhoto('${p.v}')"><img src="${p.v}"></div>`:`<a class="urlchip" href="${p.v}" target="_blank">🔗 Foto externa</a>`).join("")}</div>`:''}
+        </div>
+      </div>`).join("")}
+    </div>
+  `;
+  go('detalle',null,true);
+}
+/* ===================== TAREAS PENDIENTES ===================== */
+function openNuevaTarea(recId){
+  const html=`<div class="modal-bg" id="modalTarea" onclick="if(event.target===this)closeModal('modalTarea')">
+    <div class="modal-box">
+      <div class="sec-h" style="margin:0 0 12px">📋 Nueva tarea</div>
+      <div class="fld"><label>Descripción <span class="req">*</span></label>
+        <textarea id="t_desc" placeholder="Ej: Revisar piso interior, gestionar BL, pintar puerta…" style="min-height:70px"></textarea></div>
+      <div class="f2">
+        <div class="fld"><label>Asignado a</label><input id="t_asig" placeholder="Nombre del responsable"></div>
+        <div class="fld"><label>Fecha límite</label><input type="date" id="t_vence"></div>
+      </div>
+      <div class="btn-row" style="margin-top:14px">
+        <button class="btn btn-acc" onclick="guardarTarea('${recId}')">✓ Agregar tarea</button>
+        <button class="btn-gh" onclick="closeModal('modalTarea')">Cancelar</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend',html);
+  setTimeout(()=>el('t_desc').focus(),100);
+}
+async function guardarTarea(recId){
+  const desc=(el('t_desc').value||'').trim();
+  if(!desc){ toast('Ingrese la descripción de la tarea',true); return; }
+  const rec=await loadRec(recId); if(!rec) return;
+  if(!rec.tareas) rec.tareas=[];
+  rec.tareas.push({descripcion:desc,asignado:el('t_asig').value.trim(),vence:el('t_vence').value,estado:'Pendiente',creado:new Date().toISOString()});
+  await saveRec(rec,'ingreso');
+  closeModal('modalTarea');
+  toast('Tarea agregada');
+  openDetalle(recId);
+}
+async function marcarTareaHecha(recId,i){
+  const rec=await loadRec(recId); if(!rec) return;
+  rec.tareas[i].estado='Hecha'; rec.tareas[i].cerrado=new Date().toISOString();
+  await saveRec(rec,'ingreso');
+  toast('Tarea marcada como hecha ✓');
+  openDetalle(recId);
+}
+async function eliminarTarea(recId,i){
+  if(!confirm('¿Eliminar esta tarea?')) return;
+  const rec=await loadRec(recId); if(!rec) return;
+  rec.tareas.splice(i,1);
+  await saveRec(rec,'ingreso');
+  toast('Tarea eliminada');
+  openDetalle(recId);
+}
+
+async function editCliente(id){
+  if(!can('ingreso')){ toast('Su rol no tiene permiso para editar el cliente asociado',true); return; }
+  const rec=await loadRec(id); if(!rec) return;
+  const html=`<div class="modal-bg" id="modalEditCliente" onclick="if(event.target===this)closeModal('modalEditCliente')">
+    <div class="modal-box">
+      <div class="sec-h" style="margin:0 0 12px">🏢 Asignar cliente</div>
+      <div class="fld">
+        ${clienteSelect('ec_cli',rec.cliente||'')}
+        ${can('gestionUsuarios')?`<div class="hint" style="margin-top:6px"><span style="color:var(--acc);cursor:pointer;text-decoration:underline" onclick="closeModal('modalEditCliente');openGestorClientes()">Gestionar lista de clientes</span></div>`:''}
+      </div>
+      <div class="btn-row" style="margin-top:14px">
+        <button class="btn btn-acc" onclick="guardarEditCliente('${id}')">✓ Guardar</button>
+        <button class="btn-gh" onclick="closeModal('modalEditCliente')">Cancelar</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend',html);
+}
+async function guardarEditCliente(id){
+  const rec=await loadRec(id); if(!rec) return;
+  rec.cliente=(el('ec_cli').value||'').trim();
+  await saveRec(rec,'ingreso');
+  closeModal('modalEditCliente');
+  toast('Cliente actualizado');
+  openDetalle(id);
+}
+async function delCont(id){
+  if(!can('eliminar')){ toast('Su rol no tiene permiso para eliminar contenedores',true); return; }
+  if(!confirm("¿Eliminar este contenedor y todo su historial? Esta acción no se puede deshacer.")) return;
+  if(CLOUD_URL && SESSION){
+    try{ await cloudPost({action:'delete',id}); }
+    catch(e){ toast('No se pudo eliminar en la nube: '+e.message,true); return; } // no borrar local si falló en la nube
+  }
+  await store.del("pc_cont_"+id); delete cache[id];
+  INDEX=INDEX.filter(c=>c.id!==id); await setJSON("pc_index",INDEX);
+  toast("Contenedor eliminado"); go('patio');
+}
+
+/* ===================== PHOTO VIEWER ===================== */
+function viewPhoto(src){ el('viewerImg').src=src; el('viewer').classList.add('on');
+  el('viewerDl').onclick=()=>{const a=document.createElement('a');a.href=src;a.download='foto_contenedor.jpg';a.click();}; }
+function closeViewer(){ el('viewer').classList.remove('on'); }
+
+/* ===================== ACTAS (imprimibles) ===================== */
+async function acta(id,tipo){
+  const rec=await loadRec(id); if(!rec)return;
+  const folio=rec.id.replace(/\D/g,'');
+  const titulo=tipo==='ingreso'?'ACTA DE INGRESO':tipo==='mantenimiento'?'ORDEN / ACTA DE MANTENIMIENTO':'ACTA DE SALIDA / DESPACHO';
+  let rows=`<tr><td class="k">N° Contenedor</td><td class="mono">${rec.numero}</td><td class="k">Tipo</td><td>${rec.tipo}</td></tr>`;
+  let obs="", fotos=[], roleA="ENTREGA", roleB="RECIBE";
+  if(tipo==='ingreso'){
+    rows+=`<tr><td class="k">Fecha de ingreso</td><td>${fmtDateTime(rec.ingreso.fecha, rec.ingreso.hora)}</td><td class="k">Ubicación</td><td>${rec.ingreso.ubicacion||'—'}</td></tr>
+           <tr><td class="k">Estado</td><td>${rec.estado}</td><td class="k">Registrado por</td><td>${rec.ingreso.registradoPor||'—'}</td></tr>`;
+    obs=rec.ingreso.observaciones; fotos=rec.ingreso.fotos||[];
+  } else if(tipo==='mantenimiento'){
+    const m=(rec.mantenimientos||[])[rec.mantenimientos.length-1];
+    if(!m){toast("No hay mantenimientos registrados",true);return;}
+    rows+=`<tr><td class="k">Tipo mantenimiento</td><td>${m.tipo}</td><td class="k">Fecha</td><td>${fmtDate(m.fecha)}</td></tr>
+           <tr><td class="k">Técnico</td><td>${m.tecnico||'—'}</td><td class="k">Estado resultante</td><td>${m.estadoResultante}</td></tr>
+           <tr><td class="k">Costo estimado</td><td>${m.costo?'$'+Number(m.costo).toLocaleString('es-CO')+' COP':'—'}</td><td class="k">Ubicación</td><td>${rec.ubicacion}</td></tr>`;
+    obs=m.descripcion; fotos=m.fotos||[]; roleA="TÉCNICO / TALLER"; roleB="SUPERVISOR";
+  } else {
+    const s=rec.salida; if(!s){toast("No hay salida registrada",true);return;}
+    rows+=`<tr><td class="k">Fecha de salida</td><td>${fmtDateTime(s.fecha, s.hora)}</td><td class="k">Responsable</td><td>${s.responsable||'—'}</td></tr>
+           <tr><td class="k">Cliente</td><td>${s.cliente||'—'}</td><td class="k">Destinatario</td><td>${s.destinatario||'—'}</td></tr>
+           <tr><td class="k">N° Release</td><td class="mono">${s.release||s.booking||'—'}</td><td class="k">Transportista</td><td>${s.transportista||'—'}</td></tr>
+           <tr><td class="k">Placa</td><td class="mono">${s.placa||'—'}</td><td class="k">Sello seguridad</td><td class="mono">${s.sello||'—'}</td></tr>
+           <tr><td class="k">Días en patio</td><td>${diasEnPatio(rec)}</td><td class="k"></td><td></td></tr>`;
+    obs=s.observaciones; fotos=s.fotos||[]; roleA="DESPACHA (P&C)"; roleB="RECIBE (Transportista/Cliente)";
+  }
+  const fotosHTML=fotos.length?fotos.map(p=>p.t!=='url'?`<img src="${p.v}">`:`<div class="u">🔗 ${p.v}</div>`).join(""):'<div style="font-size:12px;color:#8a97a3">Sin evidencia fotográfica adjunta.</div>';
+  el('actaWrap').innerHTML=`<div class="acta">
+    <div class="a-top">
+      <div class="a-logo"><img src="https://contenedoreseasas.com/wp-content/uploads/2023/08/cropped-logo-contenedores-ea.png" alt="Contenedores EA SAS" onerror="this.outerHTML='<span class=fb>EA SAS</span>'"></div>
+      <div class="a-co"><h1>${EMPRESA}</h1><p>CONTROL DE INVENTARIO DE CONTENEDORES · ${CIUDAD.toUpperCase()}</p></div>
+      <div class="a-folio">Folio N°<b>${folio}</b>${fmtDate(todayISO())}</div>
+    </div>
+    <div class="a-title">${titulo}</div>
+    <table class="a-rows"><tbody>${rows}</tbody></table>
+    <div class="a-sec">DESCRIPCIÓN / OBSERVACIONES</div>
+    <div class="a-obs">${obs||'Sin novedad.'}</div>
+    <div class="a-sec">EVIDENCIA FOTOGRÁFICA</div>
+    <div class="a-photos">${fotosHTML}</div>
+    <div class="a-sec">FIRMAS Y RESPONSABLES</div>
+    <div class="a-sign">
+      <div class="col"><div class="role">${roleA}</div>
+        <div class="ln"></div><div class="lbl">Nombre y firma</div>
+        <div style="height:14px"></div><div class="ln"></div><div class="lbl">C.C. / Documento</div>
+        <div style="height:14px"></div><div class="ln"></div><div class="lbl">Fecha</div></div>
+      <div class="col"><div class="role">${roleB}</div>
+        <div class="ln"></div><div class="lbl">Nombre y firma</div>
+        <div style="height:14px"></div><div class="ln"></div><div class="lbl">C.C. / Documento</div>
+        <div style="height:14px"></div><div class="ln"></div><div class="lbl">Fecha</div></div>
+    </div>
+    <div class="a-foot">Sistema de Control de Inventarios — ${EMPRESA} · ${CIUDAD} · Copia no controlada<br>Desarrollado por <b>P&C Consultoría Integral SAS</b> · WhatsApp 322 899 9183 · info@pycconsultoria.com</div>
+  </div>`;
+  document.body.classList.add('printing');
+  setTimeout(()=>{ window.print(); document.body.classList.remove('printing'); },180);
+  toast("Acta lista · use «Guardar como PDF» para enviar");
+}
+
+/* ===================== WHATSAPP / EXPORT ===================== */
+async function shareWA(id){
+  const rec=await loadRec(id);
+  let t=`*${EMPRESA}*\nControl de Contenedores\n\n*Contenedor:* ${rec.numero} (${rec.id})\n*Tipo:* ${rec.tipo}\n*Estado:* ${rec.estado}\n*Ubicación:* ${rec.ubicacion}\n*Ingreso:* ${fmtDate(rec.fechaIngreso)}\n*Días en patio:* ${diasEnPatio(rec)}`;
+  if(rec.salida) t+=`\n*Salida:* ${fmtDate(rec.salida.fecha)}\n*Cliente:* ${rec.salida.cliente||'—'}\n*Transportista:* ${rec.salida.transportista||'—'}`;
+  t+=`\n\n_${CIUDAD}_`;
+  window.open("https://wa.me/?text="+encodeURIComponent(t),"_blank");
+}
+async function exportJSON(){
+  const data={empresa:EMPRESA,exportado:new Date().toISOString(),index:INDEX,contenedores:{}};
+  for(const c of INDEX){ data.contenedores[c.id]=await loadRec(c.id); }
+  dl("inventario_contenedores_respaldo.json",JSON.stringify(data,null,2),"application/json");
+  toast("Respaldo exportado");
+}
+async function exportCSV(){
+  const head=["ID","N° Contenedor","Tipo","Estado","Fecha Ingreso","Fecha Salida","Días en Patio","Ubicación","N° Mantenimientos","N° Traslados","Cliente Salida","Responsable Salida"];
+  let rows=[head.join(",")];
+  for(const c of INDEX){ const r=await loadRec(c.id);
+    rows.push([r.id,r.numero,r.tipo,r.estado,r.fechaIngreso,r.fechaSalida||"",diasEnPatio(r),`"${r.ubicacion||''}"`,
+      (r.mantenimientos||[]).length,(r.movimientos||[]).length,`"${r.salida?.cliente||''}"`,`"${r.salida?.responsable||''}"`].join(",")); }
+  dl("inventario_contenedores.csv","\ufeff"+rows.join("\n"),"text/csv");
+  toast("CSV exportado");
+}
+function dl(name,content,type){ const b=new Blob([content],{type}); const u=URL.createObjectURL(b);
+  const a=document.createElement('a'); a.href=u; a.download=name; a.click(); URL.revokeObjectURL(u); }
+async function importJSON(input){
+  const f=input.files[0]; if(!f)return; const txt=await f.text();
+  try{ const data=JSON.parse(txt); if(!data.index)throw 0;
+    if(!confirm("Esto reemplazará el inventario actual con el respaldo. ¿Continuar?"))return;
+    INDEX=data.index; await setJSON("pc_index",INDEX);
+    for(const id in data.contenedores){ await setJSON("pc_cont_"+id,data.contenedores[id]); cache[id]=data.contenedores[id]; }
+    toast("Respaldo importado"); go('home');
+  }catch(e){toast("Archivo no válido",true);}
+}
+async function resetAll(){
+  if(!confirm("¿Borrar TODO el inventario y reiniciar con datos de ejemplo? No se puede deshacer."))return;
+  for(const c of INDEX){ await store.del("pc_cont_"+c.id); }
+  await store.del("pc_index"); Object.keys(cache).forEach(k=>delete cache[k]);
+  INDEX=[]; await seedIfEmpty(); toast("Inventario reiniciado"); go('home');
+}
+
+/* ===================== MORE ===================== */
+function renderMore(){
+  const conectado=!!CLOUD_URL;
+  const pend=INDEX.filter(c=>(cache[c.id]&&cache[c.id]._pending)).length;
+  const esAdmin=can('gestionUsuarios');
+  el('sc-more').innerHTML=`
+    ${SESSION?`<div class="u-bar" style="margin-bottom:6px">
+      <div class="u-av">👤</div>
+      <div class="u-info">
+        <span class="u-name">${SESSION.nombre||SESSION.email}</span>
+        <span class="u-role">${SESSION.rol||'Operario'} · ${SESSION.email}</span>
+      </div>
+      <button class="u-out" onclick="logout()">↩ Salir</button>
+    </div>`:(conectado?`<div class="u-bar" style="margin-bottom:6px;border-color:var(--warn)">
+      <div class="u-av" style="background:var(--warn-soft);border-color:var(--warn)">⚠️</div>
+      <div class="u-info">
+        <span class="u-name" style="color:var(--warn)">Sin sesión iniciada</span>
+        <span class="u-role">Drive conectado, pero nada se sincronizará sin iniciar sesión</span>
+      </div>
+      <button class="u-out" style="border-color:var(--warn);color:var(--warn)" onclick="showLogin()">Ingresar</button>
+    </div>`:'')}
+    ${esAdmin?`<div class="sec-h">👥 Gestión de usuarios</div>
+    <div class="more-grid">
+      <button class="more-card" onclick="openGestorUsuarios()"><span class="mci">👥</span><div class="mct">Usuarios registrados</div><div class="mcd">Ver, agregar o desactivar accesos al sistema.</div></button>
+      <button class="more-card" onclick="openGestorClientes()"><span class="mci">🏢</span><div class="mct">Lista de clientes</div><div class="mcd">Gestionar el listado desplegable de clientes del patio.</div></button>
+    </div>`:''}
+    <div class="sec-h">☁️ Almacenamiento en Google Drive</div>
+    <div class="form" style="padding:16px">
+      <div style="display:flex;align-items:center;gap:9px;margin-bottom:12px">
+        <span style="width:10px;height:10px;border-radius:50%;background:${conectado?'var(--ok)':'var(--mut2)'}"></span>
+        <b style="font-family:'Oswald';letter-spacing:.5px">${conectado?'Conectado':'Sin conectar'}</b>
+        ${pend?`<span class="pill p-warn" style="margin-left:auto">${pend} sin subir</span>`:''}
+      </div>
+      ${can('configurarDrive')?`
+      <div class="fld" style="margin-bottom:10px"><label>URL del servicio (Web App de Google)</label>
+        <input id="cloudUrl" placeholder="https://script.google.com/macros/s/.../exec" value="${CLOUD_URL}" style="font-size:12px"></div>
+      <button class="btn btn-acc" style="font-size:13px;padding:12px" onclick="saveCloudUrl()">🔌 Conectar / Probar</button>
+      `:`<div class="hint">Solo un Administrador puede configurar esta conexión.</div>`}
+      ${(conectado&&SESSION)?`<div class="btn-row" style="margin-top:10px">
+        ${can()?`<button class="btn-gh" onclick="cloudPushAll()">⬆ Subir todo</button>`:'<span></span>'}
+        <button class="btn-gh" onclick="manualRefreshPatio()">⬇ Traer de la nube</button></div>`:''}
+      ${BACKEND_VERSION?`<div class="hint" style="margin-top:10px">Versión del servicio: <b class="mono" style="color:var(--ink)">${BACKEND_VERSION}</b> · si acaba de editar el script en Google, recuerde crear una <b>Nueva versión</b> al implementar, o esta seguirá ejecutando el código anterior.</div>`:''}
+      ${LAST_SYNC?`<div class="hint" style="margin-top:10px;padding:10px;background:var(--bg2);border-radius:9px">
+        <b style="color:var(--ink)">Última sincronización</b> · ${LAST_SYNC.fecha}<br>
+        ✓ ${LAST_SYNC.ok} correctos${LAST_SYNC.fail?` · ⚠ ${LAST_SYNC.fail} con error`:''}
+        ${LAST_SYNC.errors.length?`<div style="margin-top:6px;color:var(--warn)">${LAST_SYNC.errors.slice(0,4).map(e=>`• ${e.numero}: ${e.error}`).join('<br>')}</div>`:''}
+      </div>`:''}
+      <div class="hint" style="margin-top:10px">Los datos van a una Hoja de Google y las fotos a una carpeta de Drive. Configúrelo una sola vez (vea el instructivo que le entregaron). Úsela como archivo descargado, no dentro del chat.</div>
+    </div>
+
+    ${(can('movimiento')||can('mantenimiento'))?`
+    <div class="sec-h">Movimientos y traslados</div>
+    <div class="more-grid">
+      ${can('movimiento')?`<button class="more-card" onclick="go('mov')"><span class="mci">↻</span><div class="mct">Registrar traslado</div><div class="mcd">Mover un contenedor entre ubicaciones del patio.</div></button>`:''}
+      ${can('mantenimiento')?`<button class="more-card" onclick="go('mant')"><span class="mci">🔧</span><div class="mct">Mantenimiento</div><div class="mcd">Registrar reparación, pintura o inspección.</div></button>`:''}
+    </div>`:''}
+    ${can('exportar')?`
+    <div class="sec-h">Datos y respaldo local</div>
+    <div class="more-grid">
+      <button class="more-card" onclick="exportCSV()"><span class="mci">📊</span><div class="mct">Exportar a Excel (CSV)</div><div class="mcd">Inventario completo compatible con su archivo.</div></button>
+      <button class="more-card" onclick="exportJSON()"><span class="mci">💾</span><div class="mct">Respaldo completo</div><div class="mcd">Incluye fotos. Guárdelo periódicamente.</div></button>
+      ${can('importar')?`
+      <label class="more-card" style="display:block"><span class="mci">📁</span><div class="mct">Importar respaldo</div><div class="mcd">Restaurar desde un archivo .json.</div>
+        <input type="file" accept="application/json" style="display:none" onchange="importJSON(this)"></label>
+      <button class="more-card" onclick="resetAll()"><span class="mci">⚠️</span><div class="mct">Reiniciar inventario</div><div class="mcd">Borra todo y carga datos de ejemplo.</div></button>
+      `:''}
+    </div>`:''}
+    <div class="sec-h">Acerca de</div>
+    <div class="tbars" style="font-size:12.5px;color:var(--mut);line-height:1.7">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--line)">
+        <div style="background:#fff;border-radius:8px;padding:5px 10px;width:110px;height:38px;display:flex;align-items:center;justify-content:center;flex:none;box-shadow:0 2px 8px rgba(0,0,0,.2)">
+          <img src="https://contenedoreseasas.com/wp-content/uploads/2023/08/cropped-cropped-logo-contenedores-ea-175x58.png" alt="EA" style="width:100%;height:100%;object-fit:contain" onerror="this.outerHTML='<b style=color:#ff6a1a>EA SAS</b>'">
+        </div>
+        <div><b style="color:var(--ink)">CONTENEDORES EA SAS</b><br>Variante La Cordialidad · Cartagena de Indias</div>
+      </div>
+      Con Google Drive conectado, cada ingreso/mantenimiento/salida se guarda en la Hoja de Google y las fotos en Drive automáticamente.
+      Genere las actas desde cada contenedor y use «Guardar como PDF» al imprimir para enviarlas al cliente, conductor o personal de mantenimiento.
+    </div>
+    <div style="background:var(--surf);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;margin-top:14px">
+      <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--mut2);margin-bottom:10px">Desarrollado por</div>
+      <b style="font-family:'Oswald';font-size:16px;letter-spacing:.5px;color:var(--ink)">P&amp;C CONSULTORÍA INTEGRAL SAS</b>
+      <div style="margin-top:10px;display:flex;flex-direction:column;gap:7px">
+        <a href="https://wa.me/573228999183" style="display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--ok);font-size:13.5px;font-weight:500">
+          <span style="background:var(--ok-soft);width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:16px">📲</span>
+          322 899 9183
+        </a>
+        <a href="mailto:info@pycconsultoria.com" style="display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--sea);font-size:13.5px;font-weight:500">
+          <span style="background:var(--sea-soft);width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:16px">✉️</span>
+          info@pycconsultoria.com
+        </a>
+      </div>
+    </div>
+    <div style="height:10px"></div>`;
+}
+
+async function openGestorUsuarios(){
+  toast('Abra la hoja «Usuarios» en su Google Sheets para gestionar accesos.');
+  if(CLOUD_URL){ try{ const j=await cloudPost({action:'getSsUrl'}); if(j.url) window.open(j.url,'_blank'); }catch(e){} }
+}
+
+/* ===================== NAV ===================== */
+const TITLES={home:["Tablero",""],patio:["Patio",""],ingreso:["Ingreso",""],mant:["Mantenimiento",""],salida:["Salida / Despacho",""],detalle:["Detalle",""],mov:["Traslado interno",""],more:["Más opciones",""]};
+function go(screen,arg,fromDetalle){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
+  el('sc-'+screen).classList.add('on');
+  const [t,sub]=TITLES[screen]; el('scTitle').textContent=t; el('scSub').textContent=sub;
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.go===screen));
+  window.scrollTo(0,0);
+  if(screen==='home')renderHome();
+  if(screen==='patio')renderPatio();
+  if(screen==='ingreso')renderIngreso();
+  if(screen==='mant')renderMant();
+  if(screen==='salida')renderSalida();
+  if(screen==='mov')renderMov(arg);
+  if(screen==='more')renderMore();
+}
+document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>go(b.dataset.go));
+
+/* ===================== ERRORES VISIBLES EN PANTALLA =====================
+   Cualquier excepción de JavaScript que no quedó atrapada en su propio
+   try/catch (o cualquier promesa rechazada sin manejar) se muestra aquí como
+   un mensaje en pantalla, en vez de quedar invisible en la consola del
+   navegador. Así no se necesita abrir las herramientas de desarrollador para
+   saber que algo falló. */
+window.addEventListener('error', function(ev){
+  console.error('Error global capturado:', ev.error||ev.message);
+  try{ toast('Error en la app: '+(ev.message||'desconocido')+(ev.filename?(' ('+ev.filename.split('/').pop()+':'+ev.lineno+')'):''),true); }catch(e){}
+});
+window.addEventListener('unhandledrejection', function(ev){
+  const reason=ev.reason;
+  const msg=(reason && reason.message) ? reason.message : String(reason);
+  console.error('Promesa rechazada sin manejar:', reason);
+  try{ toast('Error en la app (promesa): '+msg,true); }catch(e){}
+});
+
+/* ===================== INIT ===================== */
+(async function init(){
+  CLOUD_URL=(await store.get('pc_cloud_url'))||"";
+  if(CLOUD_URL) el('lw_cloudUrl').value=CLOUD_URL;
+  await seedIfEmpty();
+  await loadClientes();
+  await checkAuth();
+  go('home');
+})();
+</script>
+</body>
+</html>
